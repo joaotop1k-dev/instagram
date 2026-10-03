@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#000000">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Instaflow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%23000'/><path d='M8 22l7-9 5 5 4-7' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<style>
+:root{--canvas:0 0 0;--surface:14 14 14;--sunken:22 22 22;--line:38 38 38;--ink:250 250 250;--muted:150 150 150;--accent:255 255 255;--accent-soft:38 38 38;--on-accent:0 0 0;--ok:74 222 128;--warn:250 204 21;--bad:248 113 113;--idle:120 120 120;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:rgb(var(--canvas));color:rgb(var(--ink));font:15px/1.55 'Schibsted Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+a{color:inherit}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid rgb(var(--accent));outline-offset:2px;border-radius:6px}
+.tnum{font-variant-numeric:tabular-nums}
+.muted{color:rgb(var(--muted))}.small{font-size:13px}.xs{font-size:12px}
+.bad{color:rgb(var(--bad))}.okc{color:rgb(var(--ok))}.warnc{color:rgb(var(--warn))}.accentc{color:rgb(var(--accent))}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* layout */
+.shell{min-height:100vh;display:flex}
+aside{width:240px;flex-shrink:0;background:rgb(var(--surface));border-right:1px solid rgb(var(--line));position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:24px 20px;font-weight:800;font-size:17px;letter-spacing:-.03em;text-decoration:none}
+.logo{width:28px;height:28px;border-radius:9px;background:rgb(var(--accent));display:grid;place-items:center;color:rgb(var(--on-accent))}
+nav{display:flex;flex-direction:column;gap:2px;padding:0 12px}
+nav a{padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:500;font-size:14px;color:rgb(var(--muted))}
+nav a:hover{background:rgb(var(--sunken));color:rgb(var(--ink))}
+nav a.on{background:rgb(var(--ink));color:rgb(var(--canvas))}
+.side-foot{margin-top:auto;border-top:1px solid rgb(var(--line));padding:16px}
+main{flex:1;min-width:0;padding:40px 32px}
+.wrap{max-width:1180px;margin:0 auto}
+@media (max-width:1000px){.shell{display:block}aside{width:auto;height:auto;position:static;border-right:0;border-bottom:1px solid rgb(var(--line))}.brand{padding:16px 20px}nav{flex-direction:row;overflow-x:auto;padding-bottom:12px}nav a{white-space:nowrap}.side-foot{display:none}main{padding:24px 16px}.mob-out{display:inline}}
+.mob-out{display:none}
+/* componentes */
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px}
+h1{font-size:28px;line-height:1.15;letter-spacing:-.02em;margin:0;font-weight:700}
+.sub{margin:4px 0 0;color:rgb(var(--muted));max-width:62ch}
+.panel{background:rgb(var(--surface));border:1px solid rgb(var(--line));border-radius:14px}
+.panel>header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid rgb(var(--line))}
+.panel>header h2{font-size:15px;margin:0;font-weight:600}
+.pad{padding:20px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:8px;font-weight:500;font-size:14px;border:1px solid rgb(var(--line));background:rgb(var(--surface));cursor:pointer;text-decoration:none;white-space:nowrap}
+.btn:hover{background:rgb(var(--sunken))}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:rgb(var(--accent));border-color:transparent;color:rgb(var(--on-accent));font-weight:600}
+.btn.primary:hover{background:rgb(var(--accent)/.85)}
+.btn.ghost{border-color:transparent;background:none;color:rgb(var(--muted))}
+.btn.ghost:hover{background:rgb(var(--sunken));color:rgb(var(--ink))}
+.btn.danger{color:rgb(var(--bad));border-color:rgb(var(--bad)/.3)}
+.btn.sm{height:32px;padding:0 10px;font-size:13px}
+.btn .spin{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(1turn)}}
+.field{width:100%;border:1px solid rgb(var(--line));background:rgb(var(--surface));border-radius:8px;padding:8px 12px;font-size:14px}
+.field:focus{outline:none;border-color:rgb(var(--accent))}
+label.lb{display:block;font-weight:500;font-size:14px;margin-bottom:6px}
+.hint{font-size:12px;color:rgb(var(--muted));margin-top:4px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.t-accent{background:rgb(var(--accent)/.1);color:rgb(var(--accent))}.d-accent{background:rgb(var(--accent))}
+.t-warn{background:rgb(var(--warn)/.15);color:rgb(var(--warn))}.d-warn{background:rgb(var(--warn))}
+.t-ok{background:rgb(var(--ok)/.15);color:rgb(var(--ok))}.d-ok{background:rgb(var(--ok))}
+.t-bad{background:rgb(var(--bad)/.15);color:rgb(var(--bad))}.d-bad{background:rgb(var(--bad))}
+.t-idle{background:rgb(var(--idle)/.15);color:rgb(var(--idle))}.d-idle{background:rgb(var(--idle))}
+.pulse{animation:pl 1.4s ease-in-out infinite}@keyframes pl{50%{opacity:.4}}
+.notice{border:1px solid rgb(var(--line));border-radius:8px;padding:12px 16px;font-size:14px}
+.notice.bad{border-color:rgb(var(--bad)/.4);background:rgb(var(--bad)/.08);color:rgb(var(--bad))}
+.notice.ok{border-color:rgb(var(--ok)/.4);background:rgb(var(--ok)/.08);color:rgb(var(--ok))}
+.notice.warn{border-color:rgb(var(--warn)/.4);background:rgb(var(--warn)/.08);color:rgb(var(--warn))}
+.empty{text-align:center;padding:48px 24px}.empty p{margin:4px auto 0;max-width:46ch}
+.avatar{border-radius:50%;object-fit:cover;flex-shrink:0;background:rgb(var(--accent-soft));color:rgb(var(--accent));display:grid;place-items:center;font-weight:700;font-size:11px}
+.thumb{border-radius:6px;object-fit:cover;background:rgb(var(--sunken));flex-shrink:0}
+.row{display:flex;align-items:center;gap:12px}
+.list>li{border-top:1px solid rgb(var(--line))}.list>li:first-child{border-top:0}
+ul,ol{list-style:none;margin:0;padding:0}
+.item{display:flex;align-items:center;gap:12px;width:100%;padding:12px 20px;background:none;border:0;text-align:left;cursor:pointer}
+.item:hover{background:rgb(var(--sunken))}
+.trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.grid2{display:grid;gap:24px;grid-template-columns:1.4fr 1fr}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:24px;padding:20px;margin-bottom:24px}
+@media (max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat .v{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1;margin-top:4px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid rgb(var(--line));border-radius:999px;padding:4px 12px 4px 4px;background:none;cursor:pointer;font-size:14px}
+.chip.on,.opt.on{border-color:rgb(var(--ink));background:rgb(var(--ink));color:rgb(var(--canvas))}
+.opt{border:1px solid rgb(var(--line));border-radius:8px;padding:8px 14px;background:none;cursor:pointer;font-weight:500;font-size:14px}
+.step{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:600;margin:0 0 16px}
+.step span{width:24px;height:24px;border-radius:50%;background:rgb(var(--ink));color:rgb(var(--surface));display:grid;place-items:center;font-size:12px;font-weight:700}
+.stack>*+*{margin-top:24px}
+.tabs{display:flex;gap:4px;border:1px solid rgb(var(--line));background:rgb(var(--surface));border-radius:8px;padding:4px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:6px 12px;border-radius:6px;font-weight:500;font-size:14px;color:rgb(var(--muted));cursor:pointer;white-space:nowrap}
+.tabs button.on{background:rgb(var(--ink));color:rgb(var(--surface))}
+.scroll-x{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;font-size:12px;color:rgb(var(--muted));padding:10px 12px;border-bottom:1px solid rgb(var(--line))}
+td{padding:12px;border-top:1px solid rgb(var(--line))}
+tr.click{cursor:pointer}tr.click:hover{background:rgb(var(--sunken))}
+/* drawer */
+.drawer{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end}
+.drawer .bg{position:absolute;inset:0;background:rgb(var(--ink)/.3);border:0}
+.drawer .box{position:relative;width:100%;max-width:520px;height:100%;background:rgb(var(--surface));display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.drawer .box>header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgb(var(--line))}
+.drawer .box>header h2{margin:0;font-size:18px}
+.drawer .body{flex:1;overflow-y:auto;padding:20px}
+/* dia */
+.rail{min-width:720px;padding:12px 20px 16px}
+.rail-ax{position:relative;height:20px;margin-left:160px;font-size:11px;color:rgb(var(--muted))}
+.rail-ax span{position:absolute;transform:translateX(-50%)}
+.rail-body{position:relative}
+.rail-grid{position:absolute;top:0;bottom:0;left:160px;right:0;pointer-events:none}
+.rail-grid i{position:absolute;top:0;bottom:0;width:1px;background:rgb(var(--line))}
+.rail-now{position:absolute;top:-6px;bottom:-6px;width:2px;background:rgb(var(--accent));border-radius:2px}
+.rail-row{display:flex;align-items:center;height:48px}
+.rail-name{width:160px;flex-shrink:0;display:flex;align-items:center;gap:8px;padding-right:12px;font-size:14px}
+.rail-track{position:relative;flex:1;height:100%}
+.rail-dot{position:absolute;top:50%;width:24px;height:24px;border-radius:50%;border:3px solid rgb(var(--surface));transform:translate(-50%,-50%);cursor:pointer;padding:0;transition:transform .15s}
+.rail-dot:hover{transform:translate(-50%,-50%) scale(1.25)}
+/* calendário */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);min-width:760px}
+.cal .wd{padding:8px 12px;font-size:12px;color:rgb(var(--muted));border-bottom:1px solid rgb(var(--line))}
+.cal .day{min-height:118px;border-bottom:1px solid rgb(var(--line));border-right:1px solid rgb(var(--line));padding:6px}
+.cal .day:nth-child(7n){border-right:0}
+.cal .day.out{background:rgb(var(--sunken)/.6)}.cal .day.over{background:rgb(var(--sunken));outline:2px dashed rgb(var(--ink));outline-offset:-2px}
+.cal .num{font-size:14px;color:rgb(var(--muted))}
+.cal .num.today{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgb(var(--accent));color:rgb(var(--on-accent));font-weight:600}
+.cal .ev{display:flex;align-items:center;gap:6px;width:100%;padding:2px 6px;border:0;background:none;border-radius:4px;font-size:12px;text-align:left;cursor:pointer}
+.cal .ev:hover{background:rgb(var(--sunken))}
+.cal .add{font-size:12px;color:rgb(var(--accent));text-decoration:none;opacity:0}.cal .day:hover .add,.cal .add:focus{opacity:1}
+/* auth */
+.auth{display:grid;grid-template-columns:1fr 1.1fr;min-height:100vh}
+.auth form{width:100%;max-width:360px}
+.auth .art{background:rgb(var(--sunken));border-left:1px solid rgb(var(--line));color:rgb(var(--ink));display:flex;flex-direction:column;justify-content:center;gap:20px;padding:0 64px}
+@media (max-width:900px){.auth{grid-template-columns:1fr}.auth .art{display:none}}
+.uploads{display:flex;flex-wrap:wrap;gap:12px}
+.up{width:112px}.up .sq{aspect-ratio:1;border-radius:8px;overflow:hidden;background:rgb(var(--sunken));display:grid;place-items:center}
+.up .sq img,.up .sq video{width:100%;height:100%;object-fit:cover}
+.drop{width:112px;aspect-ratio:1;border:2px dashed rgb(var(--line));border-radius:8px;display:grid;place-items:center;text-align:center;color:rgb(var(--muted));cursor:pointer;font-size:14px}
+.drop:hover{border-color:rgb(var(--accent));color:rgb(var(--accent))}
+.cards{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+@media (max-width:900px){.cards{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgb(var(--line));border-top:1px solid rgb(var(--line));border-bottom:1px solid rgb(var(--line))}
+.kv>div{background:rgb(var(--surface));padding:12px 16px}
+@media (max-width:600px){.kv{grid-template-columns:1fr 1fr}}
+.compose{display:grid;gap:24px;grid-template-columns:1fr 340px}
+@media (max-width:1000px){.compose{grid-template-columns:1fr}}
+.sticky{position:sticky;top:40px;align-self:start}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app"><p class="pad muted">Carregando…</p></div>
+<div id="drawer-root"></div>
+<script>
+"use strict";
+/* ===================== Configuração (valores públicos do projeto) ===================== */
+const SUPABASE_URL = "https://hvicjhsvqzlqekmfsndw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_i3NdDr0COW24UyKYn3kEwQ_AoLHkiYQ"; // chave pública; o RLS e a API protegem os dados
+const API = SUPABASE_URL + "/functions/v1/instaflow-api";
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+
+/* ===================== Utilitários ===================== */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+/** Escape de tudo que vem do banco ou do usuário: nada é inserido como HTML cru. */
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = (n) => String(n).padStart(2, "0");
+const toLocalInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const fTime = (d) => new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(d));
+const fDT = (d) => new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(d));
+function fRel(d) {
+  const diff = new Date(d) - Date.now(), a = Math.abs(diff), r = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+  if (a < 6e4) return diff > 0 ? "em instantes" : "agora";
+  if (a < 36e5) return r.format(Math.round(diff / 6e4), "minute");
+  if (a < 864e5) return r.format(Math.round(diff / 36e5), "hour");
+  return r.format(Math.round(diff / 864e5), "day");
+}
+const STATUS = {
+  draft: ["Rascunho", "idle"], scheduled: ["Agendado", "accent"], queued: ["Na fila", "accent"], processing: ["Publicando", "warn"],
+  published: ["Publicado", "ok"], failed: ["Falhou", "bad"], paused: ["Pausado", "idle"], canceled: ["Cancelado", "idle"],
+};
+const TYPE = { image: "Imagem", video: "Vídeo", carousel: "Carrossel", reel: "Reel", story: "Story" };
+const ACC = { active: ["Conectada", "ok"], paused: ["Pausada", "idle"], needs_reconnect: ["Reconectar", "bad"], disconnected: ["Removida", "idle"] };
+const badge = (s, pulse) => { const [l, t] = STATUS[s] || [s, "idle"]; return `<span class="badge t-${t}"><span class="dot d-${t} ${pulse ? "pulse" : ""}"></span>${esc(l)}</span>`; };
+const avatar = (src, name, size = 32) => src
+  ? `<img class="avatar" src="${esc(src)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px">`
+  : `<span class="avatar" style="width:${size}px;height:${size}px">${esc(String(name || "").slice(0, 2).toUpperCase())}</span>`;
+const thumb = (t, s = 44) => !t ? `<span class="thumb" style="width:${s}px;height:${s}px"></span>`
+  : t.kind === "video" ? `<video class="thumb" src="${esc(t.url)}" muted preload="metadata" style="width:${s}px;height:${s}px"></video>`
+  : `<img class="thumb" src="${esc(t.url)}" alt="" style="width:${s}px;height:${s}px">`;
+const notice = (tone, html) => `<div class="notice ${tone}">${html}</div>`;
+const emptyBox = (title, text, action = "") => `<div class="empty"><strong>${esc(title)}</strong>${text ? `<p class="muted small">${esc(text)}</p>` : ""}${action ? `<div style="margin-top:16px">${action}</div>` : ""}</div>`;
+function busy(btn, on) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.l = btn.innerHTML; btn.innerHTML = `<span class="spin"></span>${btn.dataset.l}`; } else if (btn.dataset.l) btn.innerHTML = btn.dataset.l; }
+
+/* ===================== Sessão e API ===================== */
+let session = null, me = null;
+const wsKey = "instaflow.ws";
+async function api(path, { method = "GET", body } = {}) {
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if (!session) { go("/login"); throw new Error("Faça login para continuar"); }
+  const res = await fetch(API + path, {
+    method,
+    headers: { Authorization: "Bearer " + session.access_token, "Content-Type": "application/json", ...(localStorageGet(wsKey) ? { "X-Workspace-Id": localStorageGet(wsKey) } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const out = await res.json().catch(() => ({}));
+  if (res.status === 401) { await sb.auth.signOut(); go("/login"); }
+  if (!res.ok) throw new Error(out.error || `Erro ${res.status}`);
+  return out;
+}
+function localStorageGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function localStorageSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { } }
+
+/* ===================== Roteador ===================== */
+let timers = [];
+const every = (ms, fn) => timers.push(setInterval(() => { if (document.visibilityState === "visible") fn(); }, ms));
+function go(path) { if (location.hash !== "#" + path) location.hash = "#" + path; else route(); }
+function parseHash() { const h = location.hash.slice(1) || "/dashboard"; const [p, q] = h.split("?"); return { path: p, q: new URLSearchParams(q || "") }; }
+const PUBLIC = ["/login", "/register", "/forgot"];
+const PAGES = {};
+
+async function route() {
+  timers.forEach(clearInterval); timers = [];
+  closeDrawer();
+  const { path, q } = parseHash();
+  const { data } = await sb.auth.getSession();
+  session = data.session;
+  if (!session && !PUBLIC.includes(path)) return go("/login");
+  if (session && PUBLIC.includes(path)) return go("/dashboard");
+  if (!session) return authPage(path.slice(1));
+  if (!me) {
+    try { me = await api("/me"); if (!localStorageGet(wsKey)) localStorageSet(wsKey, me.workspaceId); }
+    catch (e) { $("#app").innerHTML = `<div class="pad">${notice("bad", esc(e.message))}</div>`; return; }
+  }
+  const page = PAGES[path] || PAGES["/dashboard"];
+  shell(path);
+  try { await page($("#main"), q); }
+  catch (e) { $("#main").innerHTML = notice("bad", esc(e.message)); }
+}
+window.addEventListener("hashchange", route);
+sb.auth.onAuthStateChange((ev) => {
+  if (ev === "PASSWORD_RECOVERY") go("/settings");
+  if (ev === "SIGNED_OUT") { me = null; }
+});
+
+function shell(path) {
+  const nav = [["/dashboard", "Painel"], ["/compose", "Agendar"], ["/calendar", "Calendário"], ["/posts", "Publicações"], ["/automation", "Automação"], ["/accounts", "Contas"], ["/proxy", "Proxy"]];
+  if ($("#main") && $("#app").dataset.shell === "1") {
+    $$("nav a").forEach((a) => a.classList.toggle("on", a.getAttribute("href") === "#" + path));
+    $("#main").innerHTML = "";
+    return;
+  }
+  $("#app").dataset.shell = "1";
+  $("#app").innerHTML = `<div class="shell">
+    <aside>
+      <div class="row" style="justify-content:space-between">
+        <a class="brand" href="#/dashboard"><span class="logo"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10.5 6 6l2.5 2.5L12 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Instaflow</a>
+        <button class="btn ghost sm mob-out" data-logout style="margin-right:12px">Sair</button>
+      </div>
+      <nav>${nav.map(([h, l]) => `<a href="#${h}" class="${h === path ? "on" : ""}">${l}</a>`).join("")}</nav>
+      <div class="side-foot">
+        <label class="xs muted" for="ws">Workspace</label>
+        <select id="ws" class="field" style="padding:6px 10px">${me.workspaces.map((w) => `<option value="${esc(w.id)}" ${w.id === (localStorageGet(wsKey) || me.workspaceId) ? "selected" : ""}>${esc(w.name)}</option>`).join("")}</select>
+        <div class="row" style="justify-content:space-between;margin-top:16px">
+          <div style="min-width:0"><a href="#/settings" class="trunc" style="display:block;font-weight:500;font-size:14px;text-decoration:none">${esc(me.user.name)}</a><div class="xs muted trunc">${esc(me.user.email)}</div></div>
+          <button class="btn ghost sm" data-logout>Sair</button>
+        </div>
+      </div>
+    </aside>
+    <main><div class="wrap" id="main"></div></main></div>`;
+  $("#ws").onchange = (e) => { localStorageSet(wsKey, e.target.value); me = null; $("#app").dataset.shell = ""; go("/dashboard"); route(); };
+  $$("[data-logout]").forEach((b) => b.onclick = async () => { await sb.auth.signOut(); localStorageSet(wsKey, null); me = null; $("#app").dataset.shell = ""; go("/login"); });
+}
+const head = (title, sub, actions = "") => `<div class="head"><div><h1>${esc(title)}</h1>${sub ? `<p class="sub">${esc(sub)}</p>` : ""}</div><div class="row" style="flex-wrap:wrap;gap:8px">${actions}</div></div>`;
+
+/* ===================== Login / cadastro / recuperação ===================== */
+const AUTH_ERR = { "Invalid login credentials": "E-mail ou senha incorretos", "Email not confirmed": "Confirme seu e-mail pelo link que enviamos antes de entrar", "User already registered": "Já existe uma conta com este e-mail" };
+function authPage(mode) {
+  $("#app").dataset.shell = "";
+  const T = { login: ["Entrar", "Acesse o painel das suas contas."], register: ["Criar conta", "Um workspace é criado para você no primeiro acesso."], forgot: ["Recuperar senha", "Enviamos um link para você criar uma senha nova."] }[mode] || ["Entrar", ""];
+  $("#app").innerHTML = `<div class="auth">
+    <div style="display:flex;align-items:center;justify-content:center;padding:48px 24px">
+      <form id="af" class="stack" style="--g:16px">
+        <div><div style="font-weight:800;font-size:17px;letter-spacing:-.03em">Instaflow</div><h1 style="margin-top:24px">${T[0]}</h1><p class="sub">${T[1]}</p></div>
+        <div>
+          ${mode === "register" ? `<label class="lb" for="name">Nome</label><input id="name" name="name" class="field" required minlength="2" autocomplete="name" style="margin-bottom:16px">` : ""}
+          <label class="lb" for="email">E-mail</label><input id="email" name="email" type="email" class="field" required autocomplete="email">
+          ${mode !== "forgot" ? `<div class="row" style="justify-content:space-between;margin-top:16px"><label class="lb" for="pw">Senha</label>${mode === "login" ? `<a href="#/forgot" class="xs accentc">Esqueci a senha</a>` : ""}</div>
+          <input id="pw" name="password" type="password" class="field" required minlength="${mode === "register" ? 10 : 1}" autocomplete="${mode === "login" ? "current-password" : "new-password"}">${mode === "register" ? `<p class="hint">Pelo menos 10 caracteres.</p>` : ""}` : ""}
+        </div>
+        <div id="amsg"></div>
+        <button class="btn primary" style="width:100%">${mode === "forgot" ? "Enviar link" : T[0]}</button>
+        <p class="small muted" style="text-align:center">${mode === "register" ? `Já tem conta? <a class="accentc" href="#/login">Entrar</a>` : mode === "login" ? `Ainda não tem conta? <a class="accentc" href="#/register">Criar conta</a>` : `<a class="accentc" href="#/login">Voltar para o login</a>`}</p>
+      </form>
+    </div>
+    <div class="art" aria-hidden="true">
+      ${["09:00", "12:30", "18:00", "21:15"].map((t, i) => `<div class="row" style="gap:20px;opacity:${1 - i * .18}"><span class="tnum" style="width:64px;font-size:18px;font-weight:600">${t}</span><span style="height:1px;flex:1;background:rgb(var(--line))"></span><span style="background:rgb(var(--surface));border:1px solid rgb(var(--line));padding:4px 12px;border-radius:999px;font-size:14px">${["@estudio.luz", "@cafe.norte", "@loja.mare", "@estudio.luz"][i]}</span></div>`).join("")}
+      <p style="margin-top:40px;max-width:34ch;font-size:26px;font-weight:700;line-height:1.3;letter-spacing:-.02em">Cada conta com sua fila, seus horários e seu histórico.</p>
+    </div></div>`;
+  $("#af").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target)); const btn = $("#af button.primary"); busy(btn, true); $("#amsg").innerHTML = "";
+    const back = location.origin + location.pathname;
+    try {
+      if (mode === "login") { const { error } = await sb.auth.signInWithPassword({ email: f.email, password: f.password }); if (error) throw error; return go("/dashboard"); }
+      if (mode === "register") {
+        const { data, error } = await sb.auth.signUp({ email: f.email, password: f.password, options: { data: { name: f.name }, emailRedirectTo: back } });
+        if (error) throw error;
+        if (data.session) return go("/dashboard");
+        $("#amsg").innerHTML = notice("ok", `Enviamos um link de confirmação para ${esc(f.email)}. Abra o e-mail para ativar a conta.`);
+      }
+      if (mode === "forgot") { const { error } = await sb.auth.resetPasswordForEmail(f.email, { redirectTo: back }); if (error) throw error; $("#amsg").innerHTML = notice("ok", "Se o e-mail estiver cadastrado, você vai receber um link para criar uma nova senha."); }
+    } catch (x) { $("#amsg").innerHTML = notice("bad", esc(AUTH_ERR[x.message] || x.message)); }
+    busy(btn, false);
+  };
+}
+
+/* ===================== Drawer ===================== */
+function openDrawer(title, html, onMount) {
+  $("#drawer-root").innerHTML = `<div class="drawer" role="dialog" aria-modal="true" aria-label="${esc(title)}"><button class="bg" aria-label="Fechar"></button><div class="box" tabindex="-1"><header><h2>${esc(title)}</h2><button class="btn ghost sm" data-close>Fechar</button></header><div class="body">${html}</div></div></div>`;
+  const root = $("#drawer-root .drawer");
+  root.querySelector(".bg").onclick = closeDrawer; root.querySelector("[data-close]").onclick = closeDrawer;
+  root.querySelector(".box").focus();
+  onMount && onMount(root.querySelector(".body"), root);
+}
+function closeDrawer() { $("#drawer-root").innerHTML = ""; if (window.__drawerTimer) { clearInterval(window.__drawerTimer); window.__drawerTimer = null; } }
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+/* ===================== Detalhe do agendamento ===================== */
+const OUTCOME = { success: "Concluída", retry: "Vai tentar de novo", failed: "Falhou", deferred: "Adiada pelo limite diário" };
+function openTarget(id, onChanged) {
+  let caption = null;
+  const render = async (body) => {
+    const d = await api(`/targets/${id}`);
+    const t = d.target, s = t.status, editable = ["scheduled", "paused", "failed", "canceled"].includes(s);
+    if (caption === null) caption = d.post.caption;
+    $("#drawer-root h2").textContent = "@" + d.account.username;
+    body.innerHTML = `<div class="stack">
+      <div class="row" style="flex-wrap:wrap;gap:8px">${badge(s, s === "processing")}<span class="small muted">${TYPE[d.post.type]}</span><span class="small muted tnum">${fDT(t.scheduledAt)}</span></div>
+      ${t.lastError ? notice(s === "failed" ? "bad" : "warn", esc(t.lastError)) : ""}
+      ${t.permalink ? `<a href="${esc(t.permalink)}" target="_blank" rel="noreferrer" class="accentc small" style="font-weight:500">Abrir no Instagram</a>` : ""}
+      <div class="row" style="overflow-x:auto;gap:8px;align-items:stretch">${d.media.map((m) => m.kind === "video" ? `<video src="${esc(m.url)}" controls muted style="height:160px;border-radius:8px"></video>` : `<img src="${esc(m.url)}" alt="${esc(m.fileName)}" style="height:160px;border-radius:8px">`).join("")}</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        ${["scheduled", "queued"].includes(s) ? `<button class="btn sm" data-act="pause">Pausar</button>` : ""}
+        ${s === "paused" ? `<button class="btn sm" data-act="resume">Retomar</button>` : ""}
+        ${["scheduled", "paused"].includes(s) ? `<button class="btn sm" data-act="publish_now">Publicar agora</button>` : ""}
+        ${["failed", "canceled"].includes(s) ? `<button class="btn sm primary" data-act="retry">Tentar de novo</button>` : ""}
+        ${["scheduled", "paused", "failed", "queued"].includes(s) ? `<button class="btn sm ghost" data-act="cancel">Cancelar</button>` : ""}
+        ${s !== "processing" ? `<button class="btn sm danger" data-del>Excluir</button>` : ""}
+      </div>
+      <div id="tmsg"></div>
+      ${editable ? `<div><label class="lb" for="when">Reagendar</label><div class="row"><input id="when" type="datetime-local" class="field tnum" value="${toLocalInput(new Date(t.scheduledAt))}"><button class="btn" data-resched>Salvar horário</button></div></div>` : ""}
+      ${d.post.type !== "story" ? `<div><label class="lb" for="cap">Legenda</label><textarea id="cap" rows="5" class="field" ${editable ? "" : "disabled"}>${esc(caption)}</textarea>${editable ? `<button class="btn sm" style="margin-top:8px" data-cap>Salvar legenda</button>` : ""}</div>` : ""}
+      ${d.siblings.length > 1 ? `<div><h3 style="font-size:14px;margin:0 0 8px">Mesmo conteúdo em outras contas</h3><ul class="list panel small">${d.siblings.filter((x) => x.id !== t.id).map((x) => `<li class="row" style="justify-content:space-between;padding:8px 12px"><span class="trunc">@${esc(x.username)}</span><span class="tnum muted">${fDT(x.scheduledAt)}</span>${badge(x.status)}</li>`).join("")}</ul></div>` : ""}
+      <div><h3 style="font-size:14px;margin:0 0 8px">Tentativas de publicação</h3>${d.attempts.length ? `<ol class="small" style="display:grid;gap:8px">${d.attempts.map((a) => `<li style="background:rgb(var(--sunken));border-radius:8px;padding:8px 12px"><div class="row" style="justify-content:space-between"><strong style="font-weight:500">${a.outcome ? OUTCOME[a.outcome] : "Em andamento: " + esc(a.step || "início")}</strong><span class="tnum muted">${fDT(a.startedAt)}</span></div>${a.errorMessage ? `<p class="muted" style="margin:4px 0 0">${esc(a.errorMessage)}</p>` : ""}</li>`).join("")}</ol>` : `<p class="small muted">Ainda não processado.</p>`}</div>
+    </div>`;
+    const msg = (tone, t) => $("#tmsg", body).innerHTML = notice(tone, esc(t));
+    $$("[data-act]", body).forEach((b) => b.onclick = async () => { busy(b, true); try { await api(`/targets/${id}`, { method: "PATCH", body: { action: b.dataset.act } }); onChanged && onChanged(); await render(body); } catch (e) { msg("bad", e.message); busy(b, false); } });
+    const del = $("[data-del]", body); if (del) del.onclick = async () => { if (!confirm("Excluir este agendamento?")) return; try { await api(`/targets/${id}`, { method: "DELETE" }); onChanged && onChanged(); closeDrawer(); } catch (e) { msg("bad", e.message); } };
+    const rs = $("[data-resched]", body); if (rs) rs.onclick = async () => { busy(rs, true); try { await api(`/targets/${id}`, { method: "PATCH", body: { action: "reschedule", scheduledAt: new Date($("#when", body).value).toISOString() } }); onChanged && onChanged(); await render(body); } catch (e) { msg("bad", e.message); busy(rs, false); } };
+    const cp = $("[data-cap]", body); if (cp) { $("#cap", body).oninput = (e) => caption = e.target.value; cp.onclick = async () => { busy(cp, true); try { await api(`/posts/${d.post.id}`, { method: "PATCH", body: { caption: $("#cap", body).value } }); caption = null; onChanged && onChanged(); await render(body); msg("ok", "Legenda salva para as contas que ainda não publicaram."); } catch (e) { msg("bad", e.message); busy(cp, false); } }; }
+  };
+  openDrawer("Agendamento", `<p class="muted">Carregando…</p>`, (body) => {
+    render(body).catch((e) => body.innerHTML = notice("bad", esc(e.message)));
+    window.__drawerTimer = setInterval(() => { const st = $(".badge", body)?.textContent; if (["Publicando", "Na fila"].includes(st)) render(body).catch(() => { }); }, 5000);
+  });
+}
+
+/* ===================== Painel ===================== */
+PAGES["/dashboard"] = async (el) => {
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  el.innerHTML = head("Painel", new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date()), `<a class="btn primary" href="#/compose">Agendar publicação</a>`) + `<div id="dash"><p class="muted">Carregando…</p></div>`;
+  const load = async () => {
+    const d = await api(`/dashboard?dayStart=${encodeURIComponent(dayStart.toISOString())}`), c = d.counts;
+    $("#dash").innerHTML = `
+      ${c.accounts_attention > 0 ? `<a href="#/accounts" class="notice bad" style="display:flex;justify-content:space-between;margin-bottom:20px;text-decoration:none"><span><strong>${c.accounts_attention} conta(s) precisam ser reconectadas.</strong> As publicações delas ficam paradas até lá.</span><span>Ver contas</span></a>` : ""}
+      <div class="panel stats">${[["Contas conectadas", c.accounts_active], ["Hoje", c.today], ["Agendadas", c.scheduled, "accent"], ["Publicando", c.processing, "warn"], ["Concluídas", c.published_7d, "ok", "últimos 7 dias"], ["Com erro", c.failed_7d, "bad", "últimos 7 dias"]]
+        .map(([l, v, t, s]) => `<div class="stat"><div class="small muted row" style="gap:8px">${t ? `<span class="dot d-${t}" style="width:8px;height:8px"></span>` : ""}${l}</div><div class="v tnum">${v}</div>${s ? `<div class="xs muted" style="margin-top:6px">${s}</div>` : ""}</div>`).join("")}</div>
+      <section class="panel" style="margin-bottom:24px"><header><h2>Hoje</h2><div class="row xs muted" style="gap:16px">${["scheduled", "processing", "published", "failed"].map((s) => `<span class="row" style="gap:6px"><span class="dot d-${STATUS[s][1]}" style="width:8px;height:8px"></span>${STATUS[s][0]}</span>`).join("")}</div></header>${dayRail(d.accounts, d.today, dayStart)}</section>
+      <div class="grid2">
+        <section class="panel"><header><h2>Próximas publicações</h2><a class="small accentc" href="#/posts" style="font-weight:500">Ver todas</a></header>
+          ${d.upcoming.length ? `<ul class="list">${d.upcoming.map((t) => `<li><button class="item" data-t="${esc(t.id)}">${thumb(t.thumb)}<div style="flex:1;min-width:0"><div class="small"><strong style="font-weight:500">@${esc(t.username)}</strong> <span class="muted">${TYPE[t.type]}</span></div><div class="small muted trunc">${esc(t.caption || "Sem legenda")}</div></div><div style="text-align:right"><div class="small tnum" style="font-weight:500">${fDT(t.scheduledAt)}</div><div class="xs muted">${fRel(t.scheduledAt)}</div></div></button></li>`).join("")}</ul>`
+          : emptyBox("Nada agendado", "Agende um post ou crie uma regra em Automação para manter a fila cheia.", `<a class="btn sm" href="#/compose">Agendar publicação</a>`)}
+        </section>
+        <section class="panel"><header><h2>Atividade recente</h2></header>
+          ${d.recent.length ? `<ol class="list">${d.recent.map((a) => `<li class="row small" style="align-items:flex-start;padding:12px 20px"><span class="dot ${/failed|reconnect|expired/.test(a.kind) ? "d-bad" : /published/.test(a.kind) ? "d-ok" : "d-idle"}" style="margin-top:8px"></span><div style="flex:1;min-width:0"><div>${esc(a.message)}</div><div class="xs muted">${fRel(a.createdAt)}</div></div></li>`).join("")}</ol>` : emptyBox("Sem atividade ainda", "Conexões de conta, publicações e falhas aparecem aqui.")}
+        </section>
+      </div>`;
+    $$("[data-t]", el).forEach((b) => b.onclick = () => openTarget(b.dataset.t, load));
+  };
+  await load(); every(15000, load);
+};
+function dayRail(accounts, items, start) {
+  if (!accounts.length) return emptyBox("Nenhuma conta conectada", "Conecte uma conta Profissional do Instagram para começar.", `<a class="btn sm" href="#/accounts">Adicionar conta</a>`);
+  const pct = (d) => ((new Date(d) - start) / 864e5) * 100, H = [0, 3, 6, 9, 12, 15, 18, 21];
+  return `<div class="scroll-x"><div class="rail">
+    <div class="rail-ax">${H.map((h) => `<span class="tnum" style="left:${h / 24 * 100}%">${pad(h)}h</span>`).join("")}</div>
+    <div class="rail-body"><div class="rail-grid">${H.map((h) => `<i style="left:${h / 24 * 100}%"></i>`).join("")}<span class="rail-now" style="left:${pct(new Date())}%"></span></div>
+    ${accounts.map((a) => `<div class="rail-row"><div class="rail-name">${avatar(a.avatar, a.username, 24)}<span class="trunc ${a.status === "active" ? "" : "muted"}">@${esc(a.username)}</span></div><div class="rail-track">${items.filter((i) => i.accountId === a.id && i.status !== "canceled").map((i) => `<button class="rail-dot d-${STATUS[i.status][1]} ${i.status === "processing" ? "pulse" : ""}" data-t="${esc(i.id)}" style="left:${pct(i.scheduledAt)}%" title="${fTime(i.scheduledAt)}, ${STATUS[i.status][0]}, ${TYPE[i.type]}"><span class="sr">${fTime(i.scheduledAt)} ${STATUS[i.status][0]}</span></button>`).join("")}</div></div>`).join("")}
+    </div>${items.length ? "" : `<p class="small muted" style="margin:4px 0 0 160px">Nenhuma publicação hoje.</p>`}</div></div>`;
+}
+
+/* ===================== Contas ===================== */
+PAGES["/accounts"] = async (el, q) => {
+  const flash = q.get("connected") ? notice("ok", `@${esc(q.get("connected"))} conectada.`) : q.get("error") ? notice("bad", esc(q.get("error"))) : "";
+  const load = async () => {
+    const d = await api("/accounts");
+    const add = `<button class="btn primary" data-connect ${d.integrationConfigured ? "" : "disabled"}>Adicionar conta</button>`;
+    el.innerHTML = head("Contas", "Cada conta tem sua própria fila, horários e histórico. Só contas Profissionais (Empresa ou Criador) publicam pela API oficial.", add)
+      + `<div id="aflash" style="margin-bottom:20px">${flash}</div>`
+      + (!d.integrationConfigured ? `<div style="margin-bottom:20px">${notice("warn", "A integração com o Instagram ainda não foi configurada: faltam os segredos instaflow_ig_app_id e instaflow_ig_app_secret no Vault do Supabase.")}</div>` : "")
+      + (d.accounts.length ? `<div class="cards">${d.accounts.map((a) => {
+        const [l, t] = ACC[a.status] || [a.status, "idle"];
+        const soon = a.tokenExpiresAt && new Date(a.tokenExpiresAt) - Date.now() < 7 * 864e5;
+        return `<article class="panel" style="${a.status === "needs_reconnect" ? "border-color:rgb(var(--bad)/.4)" : ""}">
+          <div class="row pad" style="align-items:flex-start">${avatar(a.profilePictureUrl, a.username, 44)}<div style="flex:1;min-width:0"><div class="row" style="flex-wrap:wrap;gap:8px"><strong class="trunc" style="font-size:17px">@${esc(a.username)}</strong><span class="badge t-${t}"><span class="dot d-${t}"></span>${l}</span></div><div class="small muted">${a.accountType === "MEDIA_CREATOR" ? "Criador" : a.accountType === "BUSINESS" ? "Empresa" : "Profissional"}, fuso ${esc(a.timezone)}</div></div></div>
+          <div class="kv small">${[["Na fila", a.inQueue], ["Erros (30d)", a.failed30d], ["Última", a.lastPublishedAt ? fRel(a.lastPublishedAt) : "Nenhuma"], ["Próxima", a.nextScheduledAt ? fDT(a.nextScheduledAt) : "Nada agendado"]].map(([k, v]) => `<div><div class="xs muted">${k}</div><div class="tnum" style="font-weight:500">${esc(v)}</div></div>`).join("")}</div>
+          ${a.lastError || soon ? `<div class="small" style="padding:16px 20px 0">${a.lastError ? `<p class="bad" style="margin:0">${esc(a.lastError)}</p>` : ""}${soon && a.status !== "needs_reconnect" ? `<p class="warnc" style="margin:0">A autorização vence ${fRel(a.tokenExpiresAt)}. A renovação é automática; se falhar, reconecte.</p>` : ""}</div>` : ""}
+          <div class="row pad" style="flex-wrap:wrap;gap:8px">
+            ${a.status === "needs_reconnect" ? `<button class="btn sm primary" data-connect="${esc(a.id)}">Reconectar</button>` : `<button class="btn sm" data-toggle="${esc(a.id)}" data-on="${a.status === "active"}">${a.status === "active" ? "Pausar conta" : "Ativar conta"}</button>`}
+            <button class="btn sm" data-check="${esc(a.id)}">Testar conexão</button>
+            <button class="btn sm ghost" data-cfg="${esc(a.id)}">Configurações</button>
+            <button class="btn sm ghost bad" style="margin-left:auto" data-rm="${esc(a.id)}">Remover</button>
+          </div></article>`;
+      }).join("")}</div>` : `<div class="panel">${emptyBox("Nenhuma conta conectada", "Você vai entrar no Instagram e autorizar o Instaflow a publicar. A senha nunca passa por aqui.", add)}</div>`);
+    const flashMsg = (tone, t) => $("#aflash").innerHTML = notice(tone, esc(t));
+    $$("[data-connect]", el).forEach((b) => b.onclick = async () => { busy(b, true); try { const r = await api("/accounts/connect", { method: "POST", body: { reconnect: b.dataset.connect || undefined, returnTo: location.origin + location.pathname } }); location.href = r.url; } catch (e) { flashMsg("bad", e.message); busy(b, false); } });
+    $$("[data-toggle]", el).forEach((b) => b.onclick = async () => { busy(b, true); try { await api(`/accounts/${b.dataset.toggle}`, { method: "PATCH", body: { active: b.dataset.on !== "true" } }); await load(); } catch (e) { flashMsg("bad", e.message); busy(b, false); } });
+    $$("[data-check]", el).forEach((b) => b.onclick = async () => { busy(b, true); const r = await api(`/accounts/${b.dataset.check}/check`, { method: "POST" }).catch((e) => ({ ok: false, error: e.message })); await load(); flashMsg(r.ok ? "ok" : "bad", r.ok ? `A conta respondeu. Cota da API: ${r.quota.used} de ${r.quota.total} publicações nas últimas 24h.` : r.error); });
+    $$("[data-rm]", el).forEach((b) => b.onclick = async () => { const a = d.accounts.find((x) => x.id === b.dataset.rm); if (!confirm(`Remover @${a.username}? Os agendamentos pendentes serão cancelados. O histórico fica guardado.`)) return; await api(`/accounts/${a.id}`, { method: "DELETE" }); load(); });
+    $$("[data-cfg]", el).forEach((b) => b.onclick = () => accountSettings(d.accounts.find((x) => x.id === b.dataset.cfg), load));
+  };
+  await load(); every(30000, load);
+  if (q.get("connected") || q.get("error")) history.replaceState(null, "", "#/accounts");
+};
+function accountSettings(a, onSaved) {
+  openDrawer(`Configurações de @${a.username}`, `<div class="stack">
+    <div><label class="lb" for="tz">Fuso horário</label><input id="tz" class="field" value="${esc(a.timezone)}"><p class="hint">Usado nas regras de automação desta conta.</p></div>
+    <div><label class="lb" for="dt">Horários preferidos</label><input id="dt" class="field tnum" value="${esc(a.defaultTimes.join(", "))}" placeholder="09:00, 12:30, 19:00"><p class="hint">Aparecem como sugestão ao agendar.</p></div>
+    <div><label class="lb" for="px">Proxy de saída</label><input id="px" class="field" autocomplete="off" placeholder="${esc(a.proxy || "http://usuario:senha@host:porta")}"><p class="hint">Opcional. Roteia as chamadas desta conta à API da Meta por esse endereço, por exemplo para sair por um IP fixo liberado no firewall da empresa. Não muda limites nem regras do Instagram. Guardado criptografado.</p>
+    ${a.proxy ? `<label class="row small" style="gap:8px;margin-top:8px"><input type="checkbox" id="pxrm"> Remover proxy atual (${esc(a.proxy)})</label>` : ""}</div>
+    <div id="smsg"></div><button class="btn primary" id="ssave">Salvar configurações</button></div>`, (body) => {
+    $("#ssave", body).onclick = async (e) => {
+      const b = { timezone: $("#tz", body).value, defaultTimes: $("#dt", body).value.split(/[,\s]+/).filter(Boolean) };
+      if ($("#px", body).value) b.proxyUrl = $("#px", body).value; else if ($("#pxrm", body)?.checked) b.proxyUrl = null;
+      busy(e.target, true);
+      try { await api(`/accounts/${a.id}`, { method: "PATCH", body: b }); closeDrawer(); onSaved(); } catch (x) { $("#smsg", body).innerHTML = notice("bad", esc(x.message)); busy(e.target, false); }
+    };
+  });
+}
+
+/* ===================== Agendar ===================== */
+const NOTE = { image: "Uma imagem JPEG no feed.", video: "Publicado como Reel compartilhado no feed. A API oficial não publica mais vídeo de feed separado.", carousel: "De 2 a 10 itens, imagens e vídeos misturados.", reel: "Um vídeo MP4 ou MOV, de 3 s a 15 min. Proporção 9:16 recomendada.", story: "Uma imagem ou vídeo. A API não aceita legenda, stickers, links nem enquetes em stories." };
+const IMG_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
+const ACCEPT = { image: IMG_ACCEPT, video: "video/mp4,video/quicktime", reel: "video/mp4,video/quicktime", story: IMG_ACCEPT + ",video/mp4,video/quicktime", carousel: IMG_ACCEPT + ",video/mp4,video/quicktime" };
+const MAXI = { image: 1, video: 1, reel: 1, story: 1, carousel: 10 };
+PAGES["/compose"] = async (el, q) => {
+  const [ad, qd] = await Promise.all([api("/accounts"), api("/queues")]);
+  const accounts = ad.accounts.filter((a) => a.status === "active" || a.status === "paused");
+  const first = q.get("date") ? new Date(q.get("date") + "T09:00") : new Date(Date.now() + 36e5); first.setSeconds(0, 0);
+  const S = { sel: [], type: "image", ups: [], caption: "", dates: [toLocalInput(first)], repeat: "none", count: 4, perAcc: false, accTimes: {}, dest: "schedule", queueId: "" };
+
+  const schedule = () => {
+    const base = S.dates.filter(Boolean).map((d) => new Date(d)), step = S.repeat === "daily" ? 1 : 7;
+    const all = S.repeat === "none" ? base : base.flatMap((d) => Array.from({ length: S.count }, (_, i) => new Date(d.getTime() + i * step * 864e5)));
+    return S.sel.map((accountId) => ({ accountId, times: all.map((d) => { const o = S.perAcc && S.accTimes[accountId]; if (!o) return d; const [h, m] = o.split(":").map(Number); const x = new Date(d); x.setHours(h, m, 0, 0); return x; }) }));
+  };
+  const render = () => {
+    const ready = S.ups.filter((u) => u.mediaId), uploading = S.ups.some((u) => !u.mediaId && !u.error);
+    const sch = schedule(), total = sch.reduce((n, a) => n + a.times.length, 0);
+    const tags = (S.caption.match(/#[\p{L}\p{N}_]+/gu) || []).length;
+    const feed = S.type === "image" || S.type === "carousel";
+    const badRatio = feed && S.ups.some((u) => u.kind === "image" && u.ratio && (u.ratio < FEED_MIN - 0.01 || u.ratio > FEED_MAX + 0.01));
+    const can = ready.length && !uploading && !badRatio && (S.dest === "queue" ? S.queueId : S.sel.length && total);
+    const step = (n, t, body) => `<section class="panel pad"><h2 class="step"><span class="tnum">${n}</span>${t}</h2>${body}</section>`;
+    el.innerHTML = head("Agendar publicação", "Escolha as contas, envie a mídia e defina quando publicar. O mesmo conteúdo pode ir para várias contas em horários diferentes.") + `<div class="compose"><div class="stack">
+      ${step(1, "Contas", accounts.length ? `<div class="row" style="flex-wrap:wrap;gap:8px">${accounts.map((a) => `<button class="chip ${S.sel.includes(a.id) ? "on" : ""}" data-acc="${esc(a.id)}" aria-pressed="${S.sel.includes(a.id)}">${avatar(a.profilePictureUrl, a.username, 26)}@${esc(a.username)}${a.status === "paused" ? ` <span class="xs muted">(pausada)</span>` : ""}</button>`).join("")}${accounts.length > 1 ? `<button class="btn ghost sm" data-all>${S.sel.length === accounts.length ? "Limpar" : "Todas"}</button>` : ""}</div>${S.dest === "queue" ? `<p class="hint">Em filas, as contas vêm da regra de automação.</p>` : ""}` : `<p class="small muted">Nenhuma conta ativa. <a class="accentc" href="#/accounts">Conecte uma conta</a>.</p>`)}
+      ${step(2, "Formato", `<div class="row" style="flex-wrap:wrap;gap:8px" role="radiogroup">${Object.entries(TYPE).map(([k, l]) => `<button class="opt ${S.type === k ? "on" : ""}" role="radio" aria-checked="${S.type === k}" data-type="${k}">${l}</button>`).join("")}</div><p class="hint" style="margin-top:8px">${NOTE[S.type]}</p>`)}
+      ${step(3, "Mídia", `<div class="uploads">${S.ups.map((u, i) => `<div class="up"><div class="sq">${u.preview ? (u.kind === "video" ? `<video src="${esc(u.preview)}" muted></video>` : `<img src="${esc(u.preview)}" alt="">`) : u.error ? `<span class="xs bad" style="padding:8px">${esc(u.error)}</span>` : `<span class="small muted tnum">${u.progress}%</span>`}</div><div class="row xs" style="justify-content:space-between;margin-top:4px"><span class="muted tnum">${S.type === "carousel" ? i + 1 : u.kind === "video" ? "Vídeo" : "Imagem"}</span><span>${S.type === "carousel" ? `<button class="btn ghost sm" style="height:20px;padding:0 4px" data-mv="${i}:-1" aria-label="Mover para a esquerda">‹</button><button class="btn ghost sm" style="height:20px;padding:0 4px" data-mv="${i}:1" aria-label="Mover para a direita">›</button>` : ""}<button class="btn ghost sm" style="height:20px;padding:0 4px" data-rmu="${i}">Remover</button></span></div>${u.note ? `<div class="xs muted" style="margin-top:2px;line-height:1.35">${esc(u.note)}</div>` : ""}</div>`).join("")}
+        ${S.ups.length < MAXI[S.type] ? `<label class="drop"><span>Enviar<br>arquivo</span><input type="file" class="sr" id="file" accept="${ACCEPT[S.type]}" ${S.type === "carousel" ? "multiple" : ""}></label>` : ""}</div><p class="hint" style="margin-top:8px">Toda foto e vídeo tem os metadados (localização GPS, aparelho, datas, autoria) removidos no seu navegador antes do envio, sem perder qualidade. Imagens JPEG, PNG ou HEIC (convertidas para JPEG). No feed, imagens fora da proporção aceita (4:5 a 1,91:1) são recortadas no centro. Vídeos MP4 ou MOV até 50 MB no plano gratuito.</p>`)}
+      ${S.type !== "story" ? step(4, "Legenda", `<textarea id="cap" class="field" rows="6" placeholder="Escreva a legenda">${esc(S.caption)}</textarea><div class="row xs muted tnum" style="justify-content:flex-end;gap:16px;margin-top:4px"><span id="tagc" class="${tags > 30 ? "bad" : ""}">${tags}/30 hashtags</span><span id="capc" class="${S.caption.length > 2200 ? "bad" : ""}">${S.caption.length}/2200</span></div>`) : ""}
+      ${step(S.type === "story" ? 4 : 5, "Quando", `<div class="row" style="gap:8px;margin-bottom:16px;flex-wrap:wrap" role="radiogroup">${[["schedule", "Em datas definidas"], ["queue", "Adicionar a uma fila de conteúdo"]].map(([v, l]) => `<button class="opt ${S.dest === v ? "on" : ""}" role="radio" aria-checked="${S.dest === v}" data-dest="${v}">${l}</button>`).join("")}</div>
+        ${S.dest === "queue" ? `<label class="lb" for="qid">Fila</label><select id="qid" class="field"><option value="">Escolha uma fila</option>${qd.queues.map((x) => `<option value="${esc(x.id)}" ${S.queueId === x.id ? "selected" : ""}>${esc(x.name)} (${x.remaining} na espera)</option>`).join("")}</select><p class="hint">As regras em Automação definem dias, horários e contas. <a class="accentc" href="#/automation">Criar fila ou regra</a></p>`
+        : `<div style="display:grid;gap:8px">${S.dates.map((d, i) => `<div class="row"><input type="datetime-local" class="field tnum" value="${esc(d)}" data-date="${i}" aria-label="Data ${i + 1}">${S.dates.length > 1 ? `<button class="btn ghost" data-rmd="${i}">Remover</button>` : ""}</div>`).join("")}<div><button class="btn ghost sm" data-addd>Adicionar outra data</button></div></div>
+          <div class="row small" style="flex-wrap:wrap;gap:8px;margin-top:16px"><label for="rep">Repetir</label><select id="rep" class="field" style="width:auto"><option value="none" ${S.repeat === "none" ? "selected" : ""}>Não repetir</option><option value="daily" ${S.repeat === "daily" ? "selected" : ""}>Todo dia</option><option value="weekly" ${S.repeat === "weekly" ? "selected" : ""}>Toda semana</option></select>${S.repeat !== "none" ? `<input id="cnt" type="number" min="2" max="52" class="field tnum" style="width:80px" value="${S.count}" aria-label="Quantidade de vezes"><span>vezes</span>` : ""}</div>
+          ${S.sel.length > 1 ? `<div style="margin-top:16px"><label class="row small" style="gap:8px"><input type="checkbox" id="pa" ${S.perAcc ? "checked" : ""}> Horário diferente para cada conta</label>${S.perAcc ? `<div style="display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:12px">${S.sel.map((id) => { const a = accounts.find((x) => x.id === id); return `<div class="row small"><span class="trunc" style="width:120px">@${esc(a.username)}</span><input type="time" class="field tnum" style="width:120px" value="${esc(S.accTimes[id] || "")}" data-at="${esc(id)}" list="dl-${esc(id)}"><datalist id="dl-${esc(id)}">${a.defaultTimes.map((t) => `<option value="${esc(t)}">`).join("")}</datalist></div>`; }).join("")}</div>` : ""}</div>` : ""}`}`)}
+    </div>
+    <aside class="sticky"><section class="panel"><header><h2>Resumo</h2></header><div class="pad">
+      <dl class="small" style="display:grid;gap:8px;margin:0"><div class="row" style="justify-content:space-between"><dt class="muted">Formato</dt><dd style="margin:0">${TYPE[S.type]}</dd></div><div class="row" style="justify-content:space-between"><dt class="muted">Mídias</dt><dd class="tnum" style="margin:0">${ready.length}</dd></div>${S.dest === "schedule" ? `<div class="row" style="justify-content:space-between"><dt class="muted">Publicações</dt><dd class="tnum" style="margin:0;font-weight:600">${total}</dd></div>` : ""}</dl>
+      ${S.dest === "schedule" && total ? `<ul class="small" style="max-height:224px;overflow-y:auto;border-top:1px solid rgb(var(--line));margin-top:16px;padding-top:12px;display:grid;gap:4px">${sch.flatMap((a) => a.times.map((t) => ({ a, t }))).sort((x, y) => x.t - y.t).slice(0, 40).map(({ a, t }) => `<li class="row" style="justify-content:space-between"><span class="trunc">@${esc(accounts.find((x) => x.id === a.accountId)?.username)}</span><span class="tnum muted">${fDT(t)}</span></li>`).join("")}</ul>` : ""}
+      ${!can ? `<ul class="small warnc" style="margin-top:16px;display:grid;gap:4px">${[
+        S.dest === "schedule" && !S.sel.length ? "Escolha pelo menos uma conta no passo 1" : "",
+        !S.ups.length ? "Envie a mídia no passo 3" : "",
+        uploading ? "Aguarde o upload terminar" : "",
+        S.ups.some((u) => u.error) && !ready.length ? "O upload falhou: remova e envie de novo" : "",
+        badRatio ? "Uma imagem está fora da proporção do feed (4:5 a 1,91:1): remova e envie de novo para recortar" : "",
+        S.dest === "schedule" && !S.dates.filter(Boolean).length ? "Defina data e horário" : "",
+        S.dest === "queue" && !S.queueId ? "Escolha a fila" : "",
+      ].filter(Boolean).map((t) => `<li>• ${t}</li>`).join("")}</ul>` : ""}
+      <div id="cmsg" style="margin-top:16px"></div>
+      <button class="btn primary" id="submit" style="width:100%;margin-top:8px" ${can ? "" : "disabled"}>${S.dest === "queue" ? "Adicionar à fila" : total > 1 ? `Agendar ${total} publicações` : "Agendar publicação"}</button>
+    </div></section></aside></div>`;
+    bind();
+  };
+  const bind = () => {
+    $$("[data-acc]", el).forEach((b) => b.onclick = () => { const id = b.dataset.acc; S.sel = S.sel.includes(id) ? S.sel.filter((x) => x !== id) : [...S.sel, id]; render(); });
+    const all = $("[data-all]", el); if (all) all.onclick = () => { S.sel = S.sel.length === accounts.length ? [] : accounts.map((a) => a.id); render(); };
+    $$("[data-type]", el).forEach((b) => b.onclick = () => { S.type = b.dataset.type; S.ups = S.ups.slice(0, MAXI[S.type]); render(); });
+    $$("[data-dest]", el).forEach((b) => b.onclick = () => { S.dest = b.dataset.dest; render(); });
+    $$("[data-rmu]", el).forEach((b) => b.onclick = () => { S.ups.splice(+b.dataset.rmu, 1); render(); });
+    $$("[data-mv]", el).forEach((b) => b.onclick = () => { const [i, d] = b.dataset.mv.split(":").map(Number), j = i + d; if (j < 0 || j >= S.ups.length) return; [S.ups[i], S.ups[j]] = [S.ups[j], S.ups[i]]; render(); });
+    const file = $("#file", el); if (file) file.onchange = (e) => addFiles([...e.target.files]);
+    const cap = $("#cap", el); if (cap) cap.oninput = (e) => { S.caption = e.target.value; const t = (S.caption.match(/#[\p{L}\p{N}_]+/gu) || []).length; $("#tagc").textContent = `${t}/30 hashtags`; $("#tagc").className = t > 30 ? "bad" : ""; $("#capc").textContent = `${S.caption.length}/2200`; $("#capc").className = S.caption.length > 2200 ? "bad" : ""; };
+    $$("[data-date]", el).forEach((i) => i.onchange = (e) => { S.dates[+i.dataset.date] = e.target.value; render(); });
+    $$("[data-rmd]", el).forEach((b) => b.onclick = () => { S.dates.splice(+b.dataset.rmd, 1); render(); });
+    const addd = $("[data-addd]", el); if (addd) addd.onclick = () => { const last = new Date(S.dates[S.dates.length - 1] || first); S.dates.push(toLocalInput(new Date(last.getTime() + 864e5))); render(); };
+    const rep = $("#rep", el); if (rep) rep.onchange = (e) => { S.repeat = e.target.value; render(); };
+    const cnt = $("#cnt", el); if (cnt) cnt.onchange = (e) => { S.count = Math.max(2, Math.min(52, +e.target.value || 2)); render(); };
+    const pa = $("#pa", el); if (pa) pa.onchange = (e) => { S.perAcc = e.target.checked; render(); };
+    $$("[data-at]", el).forEach((i) => i.onchange = (e) => { S.accTimes[i.dataset.at] = e.target.value; render(); });
+    const qid = $("#qid", el); if (qid) qid.onchange = (e) => { S.queueId = e.target.value; render(); };
+    $("#submit", el).onclick = submit;
+  };
+  async function addFiles(files) {
+    for (const original of files.slice(0, Math.max(0, MAXI[S.type] - S.ups.length))) {
+      const isImg = original.type.startsWith("image") || isHeic(original);
+      const u = { name: original.name, kind: isImg ? "image" : "video", progress: 0, note: isImg ? "Preparando a imagem…" : "" };
+      S.ups.push(u); render();
+      try {
+        let file = original;
+        if (isImg) { const pr = await prepareImage(original, S.type); file = pr.file; u.ratio = pr.ratio; u.note = pr.note; render(); }
+        else {
+          u.note = "Removendo metadados…"; render();
+          try {
+            const rv = stripMp4(new Uint8Array(await original.arrayBuffer()));
+            file = new File(rv.parts, original.name, { type: original.type || "video/mp4" });
+            u.note = rv.removed.length ? `Metadados removidos: ${rv.removed.join(", ")}` : "Sem metadados para remover";
+          } catch (e) {
+            throw new Error(`Não foi possível limpar os metadados deste vídeo (${e.message}). Exporte de novo em MP4 e envie.`);
+          }
+          render();
+        }
+        const r = await api("/media", { method: "POST", body: { fileName: file.name, mimeType: file.type, sizeBytes: file.size } });
+        await putFile(r.uploadUrl, file, (p) => { u.progress = p; const n = $$(".up .sq span.tnum", el); n.forEach((x) => { if (x.textContent.endsWith("%")) x.textContent = p + "%"; }); });
+        const c = await api(`/media/${r.mediaId}/complete`, { method: "POST" });
+        Object.assign(u, { mediaId: r.mediaId, preview: c.previewUrl, progress: 100 });
+      } catch (e) { u.error = e.message; }
+      render();
+    }
+  }
+  let submitting = false;
+  async function submit() {
+    if (submitting) return;
+    submitting = true;
+    const btn = $("#submit", el); busy(btn, true);
+    try {
+      if (S.dest === "schedule") {
+        const sch = schedule(), all = sch.flatMap((a) => a.times.map((t) => +t));
+        const qs = (id) => new URLSearchParams({ accountId: id, from: new Date(Math.min(...all) - 6e5).toISOString(), to: new Date(Math.max(...all) + 6e5).toISOString(), status: "scheduled,queued,processing,published,paused", limit: "500" });
+        const near = [];
+        for (const a of sch) {
+          const { items } = await api(`/targets?${qs(a.accountId)}`);
+          for (const t of a.times) for (const it of items) if (Math.abs(new Date(it.scheduledAt) - t) < 6e5) near.push(`@${it.username} às ${fTime(it.scheduledAt)} (${STATUS[it.status][0].toLowerCase()})`);
+        }
+        if (near.length && !confirm(`Já existe publicação a menos de 10 minutos desse horário:\n\n${[...new Set(near)].slice(0, 8).join("\n")}\n\nAgendar mesmo assim?`)) { submitting = false; busy(btn, false); return; }
+      }
+      const r = await api("/posts", { method: "POST", body: { type: S.type, caption: S.caption, mediaIds: S.ups.filter((u) => u.mediaId).map((u) => u.mediaId), mode: S.dest, queueId: S.dest === "queue" ? S.queueId : undefined, accounts: S.dest === "schedule" ? schedule().map((a) => ({ accountId: a.accountId, times: a.times.map((t) => t.toISOString()) })) : [] } });
+      el.innerHTML = head(S.dest === "queue" ? "Adicionado à fila" : "Publicações agendadas") + `<section class="panel pad"><p style="font-size:17px;margin:0">${S.dest === "queue" ? "O conteúdo entrou na fila e será usado pelas regras de automação." : `${r.targets} publicação(ões) agendada(s). O sistema publica cada uma no horário e registra o resultado.`}</p><div class="row" style="gap:8px;margin-top:20px"><a class="btn primary" href="${S.dest === "queue" ? "#/automation" : "#/posts"}">${S.dest === "queue" ? "Ver filas" : "Acompanhar publicações"}</a><a class="btn" href="#/compose" onclick="setTimeout(route)">Agendar outra</a></div></section>`;
+    } catch (e) { $("#cmsg", el).innerHTML = notice("bad", esc(e.message)); busy(btn, false); submitting = false; }
+  }
+  render();
+};
+/* ---------- Limpeza de metadados (sem perda de qualidade) ---------- */
+const ascii = (u8, from, n) => String.fromCharCode(...u8.subarray(from, from + n));
+
+function exifOrientation(seg) {
+  // seg = FFE1 len "Exif\0\0" TIFF...
+  const t = 10, le = seg[t] === 0x49;
+  const dv = new DataView(seg.buffer, seg.byteOffset, seg.byteLength);
+  const u16 = (o) => dv.getUint16(t + o, le), u32 = (o) => dv.getUint32(t + o, le);
+  try {
+    const ifd = u32(4), n = u16(ifd);
+    for (let k = 0; k < n; k++) { const e = ifd + 2 + k * 12; if (u16(e) === 0x0112) return u16(e + 8); }
+  } catch { /* EXIF malformado */ }
+  return 1;
+}
+
+/** JPEG: remove EXIF (GPS, câmera, datas), XMP, IPTC, miniaturas e comentários. Mantém JFIF, perfil de cor ICC e Adobe (cor). */
+function stripJpeg(u8) {
+  if (u8[0] !== 0xff || u8[1] !== 0xd8) throw new Error("JPEG inválido");
+  const parts = [u8.subarray(0, 2)], removed = new Set();
+  let i = 2, orientation = 1;
+  while (i < u8.length) {
+    if (u8[i] !== 0xff) throw new Error("JPEG inválido");
+    const m = u8[i + 1];
+    if (m === 0xff) { i++; continue; }
+    if (m === 0xda || m === 0xd9) { parts.push(u8.subarray(i)); break; }          // imagem comprimida: copiada intacta
+    if ((m >= 0xd0 && m <= 0xd7) || m === 0x01) { parts.push(u8.subarray(i, i + 2)); i += 2; continue; }
+    const len = (u8[i + 2] << 8) | u8[i + 3], seg = u8.subarray(i, i + 2 + len);
+    let keep = true;
+    if (m === 0xe1) { keep = false; if (ascii(seg, 4, 6) === "Exif\0\0") { orientation = exifOrientation(seg); removed.add("EXIF (GPS, câmera, datas)"); } else removed.add("XMP"); }
+    else if (m === 0xe0) { keep = ascii(seg, 4, 5) === "JFIF\0"; if (!keep) removed.add("miniatura"); }
+    else if (m === 0xe2) { keep = ascii(seg, 4, 12) === "ICC_PROFILE\0"; if (!keep) removed.add("dados de fabricante"); }
+    else if (m === 0xee) keep = ascii(seg, 4, 5) === "Adobe";
+    else if (m === 0xed) { keep = false; removed.add("IPTC"); }
+    else if (m >= 0xe3 && m <= 0xef) { keep = false; removed.add("dados de fabricante"); }
+    else if (m === 0xfe) { keep = false; removed.add("comentário"); }
+    if (keep) parts.push(seg);
+    i += 2 + len;
+  }
+  return { parts, removed: [...removed], orientation };
+}
+
+/** MP4/MOV: remove udta/meta/XMP (GPS, aparelho, software, autor), zera datas de criação e corrige os offsets das amostras. */
+function stripMp4(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+  const readBoxes = (start, end) => {
+    const out = [];
+    let p = start;
+    while (p + 8 <= end) {
+      let size = dv.getUint32(p), hdr = 8;
+      const type = ascii(u8, p + 4, 4);
+      if (size === 1) { size = Number(dv.getBigUint64(p + 8)); hdr = 16; }
+      else if (size === 0) size = end - p;
+      if (size < hdr || p + size > end) throw new Error("Vídeo com estrutura inválida");
+      out.push({ type, start: p, end: p + size, hdr });
+      p += size;
+    }
+    return out;
+  };
+  const CONTAINERS = new Set(["moov", "trak", "mdia", "minf", "stbl", "edts"]);
+  const DROP_TOP = new Set(["udta", "meta", "uuid"]);
+  const DROP_IN = new Set(["udta", "meta", "uuid"]);
+  const top = readBoxes(0, u8.length);
+  if (!top.length || !["ftyp", "moov", "mdat", "free", "wide", "skip"].includes(top[0].type)) throw new Error("Não parece um MP4/MOV");
+
+  const ranges = [], removed = new Set();
+  const markDrops = (box) => {
+    for (const c of readBoxes(box.start + box.hdr, box.end)) {
+      if (DROP_IN.has(c.type)) { ranges.push([c.start, c.end]); removed.add(c.type === "uuid" ? "XMP" : "metadados (GPS, aparelho, software)"); }
+      else if (CONTAINERS.has(c.type)) markDrops(c);
+    }
+  };
+  for (const b of top) {
+    if (DROP_TOP.has(b.type)) { ranges.push([b.start, b.end]); removed.add(b.type === "uuid" ? "XMP" : "metadados (GPS, aparelho, software)"); }
+    else if (b.type === "moov") markDrops(b);
+  }
+  const shift = (off) => { let d = 0; for (const [s, e] of ranges) if (e <= off) d += e - s; return off - d; };
+
+  const be32 = (n) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, n); return b; };
+  const build = (box) => {   // reconstrói um contêiner sem os filhos removidos
+    const kids = [];
+    for (const c of readBoxes(box.start + box.hdr, box.end)) {
+      if (DROP_IN.has(c.type)) continue;
+      if (CONTAINERS.has(c.type)) { kids.push(build(c)); continue; }
+      const raw = u8.slice(c.start, c.end), v = new DataView(raw.buffer);
+      if (c.type === "stco") { const n = v.getUint32(12); for (let k = 0; k < n; k++) v.setUint32(16 + k * 4, shift(v.getUint32(16 + k * 4))); }
+      else if (c.type === "co64") { const n = v.getUint32(12); for (let k = 0; k < n; k++) v.setBigUint64(16 + k * 8, BigInt(shift(Number(v.getBigUint64(16 + k * 8))))); }
+      else if (c.type === "mvhd" || c.type === "tkhd" || c.type === "mdhd") {
+        if (raw[8] === 1) { v.setBigUint64(12, 0n); v.setBigUint64(20, 0n); } else { v.setUint32(12, 0); v.setUint32(16, 0); }
+        if (!removed.has("datas de gravação")) removed.add("datas de gravação");
+      }
+      kids.push(raw);
+    }
+    const size = 8 + kids.reduce((n, k) => n + k.length, 0), out = new Uint8Array(size);
+    out.set(be32(size), 0); out.set(u8.subarray(box.start + 4, box.start + 8), 4);
+    let o = 8; for (const k of kids) { out.set(k, o); o += k.length; }
+    return out;
+  };
+  const parts = [];
+  for (const b of top) {
+    if (DROP_TOP.has(b.type)) continue;
+    parts.push(b.type === "moov" ? build(b) : u8.subarray(b.start, b.end));  // mdat (o vídeo em si) é copiado intacto
+  }
+  return { parts, removed: [...removed] };
+}
+
+/* ---------- Preparo da imagem no navegador ----------
+   O Instagram só aceita JPEG e, no feed, proporção entre 4:5 e 1,91:1.
+   Aqui convertemos (PNG, WebP, HEIC), corrigimos a orientação, recortamos no centro
+   quando a proporção não é aceita e limitamos a 1440 px e 8 MB. */
+const FEED_MIN = 0.8, FEED_MAX = 1.91, MAX_W = 1440, MAX_IMG = 8 * 1024 * 1024;
+const isHeic = (f) => /heic|heif/i.test(f.type) || /\.(heic|heif)$/i.test(f.name);
+let heicLoader = null;
+function loadHeic() {
+  heicLoader ??= new Promise((ok, ko) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js";
+    sc.onload = ok; sc.onerror = () => { heicLoader = null; ko(new Error("Não foi possível carregar o conversor de HEIC. Tente exportar a foto como JPEG.")); };
+    document.head.appendChild(sc);
+  });
+  return heicLoader;
+}
+async function prepareImage(file, type) {
+  let src = file;
+  if (isHeic(file)) {
+    await loadHeic();
+    src = await window.heic2any({ blob: file, toType: "image/jpeg", quality: 0.95 });
+    if (Array.isArray(src)) src = src[0];
+  }
+  let bmp;
+  try { bmp = await createImageBitmap(src, { imageOrientation: "from-image" }); }
+  catch { throw new Error("Não foi possível ler esta imagem. Use JPEG, PNG ou HEIC."); }
+  const w = bmp.width, h = bmp.height, r = w / h, feed = type === "image" || type === "carousel";
+  let cw = w, ch = h, note = "";
+  if (feed && r < FEED_MIN) { ch = Math.round(w / FEED_MIN); note = "Recortada para 4:5, a proporção vertical máxima do feed"; }
+  else if (feed && r > FEED_MAX) { cw = Math.round(h * FEED_MAX); note = "Recortada para 1,91:1, a proporção horizontal máxima do feed"; }
+  const scale = Math.min(1, MAX_W / cw), ratio = cw / ch;
+  const untouched = src === file && file.type === "image/jpeg" && cw === w && ch === h && scale === 1 && file.size <= MAX_IMG;
+  let rotated = false;
+  if (untouched) {
+    const r0 = stripJpeg(new Uint8Array(await file.arrayBuffer()));
+    if (r0.orientation === 1) {
+      bmp.close();
+      const clean = new File(r0.parts, file.name, { type: "image/jpeg" });
+      return { file: clean, ratio, note: r0.removed.length ? `Metadados removidos: ${r0.removed.join(", ")}` : "Sem metadados para remover" };
+    }
+    rotated = true; // a rotação estava só no EXIF: aplicamos de verdade nos pixels
+  }
+  const cv = document.createElement("canvas");
+  cv.width = Math.round(cw * scale); cv.height = Math.round(ch * scale);
+  const cx = cv.getContext("2d");
+  cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); // PNG transparente vira fundo branco
+  cx.drawImage(bmp, (w - cw) / 2, (h - ch) / 2, cw, ch, 0, 0, cv.width, cv.height);
+  bmp.close();
+  let q = 0.92, blob;
+  do { blob = await new Promise((res) => cv.toBlob(res, "image/jpeg", q)); q -= 0.1; } while (blob.size > MAX_IMG && q > 0.45);
+  if (!note) note = rotated ? "Girada para a posição correta" : file.type !== "image/jpeg" || src !== file ? "Convertida para JPEG" : scale < 1 ? "Reduzida para 1440 px de largura" : "Comprimida para caber em 8 MB";
+  note += ". Metadados removidos (o arquivo é gerado do zero)";
+  return { file: new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }), ratio, note };
+}
+function putFile(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest(); x.open("PUT", url);
+    x.setRequestHeader("Content-Type", file.type); x.setRequestHeader("x-upsert", "false");
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round(e.loaded / e.total * 99));
+    x.onload = () => x.status < 300 ? resolve() : reject(new Error(`Upload recusado pelo storage (${x.status})`));
+    x.onerror = () => reject(new Error("Falha de rede no upload"));
+    x.send(file);
+  });
+}
+
+/* ===================== Calendário ===================== */
+PAGES["/calendar"] = async (el) => {
+  const now = new Date(); let month = new Date(now.getFullYear(), now.getMonth(), 1), acc = "", items = [];
+  const accs = (await api("/accounts")).accounts;
+  const load = async () => {
+    const gs = new Date(month); gs.setDate(1 - ((gs.getDay() + 6) % 7));
+    const days = Array.from({ length: 42 }, (_, i) => { const d = new Date(gs); d.setDate(d.getDate() + i); return d; });
+    const end = new Date(gs); end.setDate(end.getDate() + 42);
+    const qs = new URLSearchParams({ from: gs.toISOString(), to: end.toISOString(), limit: "500" }); if (acc) qs.set("accountId", acc);
+    items = (await api(`/targets?${qs}`)).items.filter((i) => i.status !== "canceled");
+    const by = {}; items.forEach((i) => (by[dayKey(new Date(i.scheduledAt))] ||= []).push(i));
+    const today = dayKey(new Date());
+    el.innerHTML = head("Calendário", "Arraste um post para outro dia para reagendar no mesmo horário. Clique em Agendar num dia para criar nele.", `<select id="cacc" class="field" style="width:auto" aria-label="Filtrar conta"><option value="">Todas as contas</option>${accs.map((a) => `<option value="${esc(a.id)}" ${acc === a.id ? "selected" : ""}>@${esc(a.username)}</option>`).join("")}</select><a class="btn primary" href="#/compose">Agendar publicação</a>`)
+      + `<div id="calmsg" style="margin-bottom:16px"></div><section class="panel" style="overflow:hidden"><header><h2 style="text-transform:capitalize;font-size:18px">${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(month)}</h2><div class="row" style="gap:4px"><button class="btn ghost sm" data-m="-1">Anterior</button><button class="btn ghost sm" data-m="0">Hoje</button><button class="btn ghost sm" data-m="1">Próximo</button></div></header>
+      <div class="scroll-x"><div class="cal">${["seg", "ter", "qua", "qui", "sex", "sáb", "dom"].map((w) => `<div class="wd">${w}</div>`).join("")}
+      ${days.map((d) => { const k = dayKey(d), list = (by[k] || []).sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt)), past = k < today;
+        return `<div class="day ${d.getMonth() !== month.getMonth() ? "out" : ""}" data-day="${k}" data-past="${past}"><div class="row" style="justify-content:space-between;padding:0 4px 4px"><span class="num tnum ${k === today ? "today" : ""}">${d.getDate()}</span>${past ? "" : `<a class="add" href="#/compose?date=${k}">Agendar</a>`}</div>
+        ${list.slice(0, 4).map((i) => { const dr = ["scheduled", "paused", "failed"].includes(i.status); return `<button class="ev" data-t="${esc(i.id)}" ${dr ? `draggable="true" style="cursor:grab"` : ""}><span class="dot d-${STATUS[i.status][1]}"></span><span class="tnum muted">${fTime(i.scheduledAt)}</span><span class="trunc">@${esc(i.username)}</span><span class="sr">${TYPE[i.type]}, ${STATUS[i.status][0]}</span></button>`; }).join("")}
+        ${list.length > 4 ? `<div class="xs muted" style="padding:0 6px">mais ${list.length - 4}</div>` : ""}</div>`; }).join("")}</div></div></section>`;
+    $("#cacc").onchange = (e) => { acc = e.target.value; load(); };
+    $$("[data-m]", el).forEach((b) => b.onclick = () => { const m = +b.dataset.m; month = m === 0 ? new Date(now.getFullYear(), now.getMonth(), 1) : new Date(month.getFullYear(), month.getMonth() + m, 1); load(); });
+    $$("[data-t]", el).forEach((b) => { b.onclick = () => openTarget(b.dataset.t, load); b.ondragstart = (e) => e.dataTransfer.setData("text/plain", b.dataset.t); });
+    $$("[data-day]", el).forEach((c) => {
+      if (c.dataset.past === "true") return;
+      c.ondragover = (e) => { e.preventDefault(); c.classList.add("over"); };
+      c.ondragleave = () => c.classList.remove("over");
+      c.ondrop = async (e) => {
+        e.preventDefault(); c.classList.remove("over");
+        const it = items.find((x) => x.id === e.dataTransfer.getData("text/plain")); if (!it) return;
+        const old = new Date(it.scheduledAt), [y, m, dd] = c.dataset.day.split("-").map(Number), nx = new Date(y, m - 1, dd, old.getHours(), old.getMinutes());
+        if (dayKey(nx) === dayKey(old)) return;
+        try { await api(`/targets/${it.id}`, { method: "PATCH", body: { action: "reschedule", scheduledAt: nx.toISOString() } }); await load(); }
+        catch (x) { $("#calmsg").innerHTML = notice("bad", esc(x.message)); }
+      };
+    });
+  };
+  await load(); every(20000, () => { if (!$("#drawer-root .drawer")) load(); });
+};
+
+/* ===================== Publicações ===================== */
+PAGES["/posts"] = async (el) => {
+  const TABS = [["upcoming", "Próximas", "scheduled,queued,paused", "asc"], ["processing", "Em processamento", "queued,processing", "asc"], ["published", "Publicadas", "published", "desc"], ["failed", "Com erro", "failed", "desc"], ["all", "Todas", "", "desc"]];
+  let tab = "upcoming", acc = "";
+  const accs = (await api("/accounts")).accounts;
+  el.innerHTML = head("Publicações", "Fila, processamento e histórico de todas as contas. Clique numa linha para pausar, editar, reagendar ou ver as tentativas.")
+    + `<div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px"><div class="tabs" role="tablist">${TABS.map(([id, l]) => `<button role="tab" data-tab="${id}" class="${id === tab ? "on" : ""}" aria-selected="${id === tab}">${l}</button>`).join("")}</div><select id="pacc" class="field" style="width:auto" aria-label="Filtrar conta"><option value="">Todas as contas</option>${accs.map((a) => `<option value="${esc(a.id)}">@${esc(a.username)}</option>`).join("")}</select></div><section class="panel" id="plist"><p class="pad muted">Carregando…</p></section>`;
+  const load = async () => {
+    const t = TABS.find((x) => x[0] === tab), qs = new URLSearchParams({ order: t[3], limit: "200" });
+    if (t[2]) qs.set("status", t[2]); if (acc) qs.set("accountId", acc);
+    const { items } = await api(`/targets?${qs}`);
+    $("#plist").innerHTML = !items.length ? emptyBox("Nada por aqui", tab === "failed" ? "Nenhuma publicação falhou." : "Nenhuma publicação neste filtro.")
+      : `<div class="scroll-x"><table style="min-width:760px"><thead><tr><th style="padding-left:20px">Conteúdo</th><th>Conta</th><th>Horário</th><th>Situação</th></tr></thead><tbody>${items.map((i) => `<tr class="click" tabindex="0" data-t="${esc(i.id)}">
+        <td style="padding-left:20px"><div class="row">${thumb(i.thumb, 40)}<div style="min-width:0"><div style="font-weight:500">${TYPE[i.type]}${i.mediaCount > 1 ? `<span class="muted">, ${i.mediaCount} itens</span>` : ""}</div><div class="muted trunc" style="max-width:38ch">${esc(i.caption || "Sem legenda")}</div></div></div></td>
+        <td><span class="row" style="gap:8px">${avatar(i.avatar, i.username, 22)}@${esc(i.username)}</span></td>
+        <td><div class="tnum">${fDT(i.publishedAt || i.scheduledAt)}</div><div class="xs muted">${fRel(i.publishedAt || i.scheduledAt)}</div></td>
+        <td>${badge(i.status, i.status === "processing")}${i.lastError ? `<div class="xs bad trunc" style="max-width:32ch;margin-top:4px" title="${esc(i.lastError)}">${esc(i.lastError)}</div>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+    $$("[data-t]", el).forEach((r) => { r.onclick = () => openTarget(r.dataset.t, load); r.onkeydown = (e) => e.key === "Enter" && openTarget(r.dataset.t, load); });
+  };
+  $$("[data-tab]", el).forEach((b) => b.onclick = () => { tab = b.dataset.tab; $$("[data-tab]", el).forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); }); load(); });
+  $("#pacc").onchange = (e) => { acc = e.target.value; load(); };
+  await load(); every(5000, () => { if (["upcoming", "processing"].includes(tab)) load(); });
+};
+
+/* ===================== Automação ===================== */
+const DAYS = [[1, "Seg"], [2, "Ter"], [3, "Qua"], [4, "Qui"], [5, "Sex"], [6, "Sáb"], [7, "Dom"]];
+PAGES["/automation"] = async (el) => {
+  const load = async () => {
+    const [qd, rd, ad] = await Promise.all([api("/queues"), api("/rules"), api("/accounts")]);
+    const un = (id) => ad.accounts.find((a) => a.id === id)?.username || "conta removida";
+    el.innerHTML = head("Automação", "Monte filas de conteúdo e crie regras com dias e horários. O sistema preenche os próximos dias com o próximo conteúdo da fila, a cada 5 minutos.")
+      + `<div class="grid2" style="grid-template-columns:1fr 1.3fr"><section class="panel"><header><h2>Filas de conteúdo</h2></header>
+        <div class="row" style="padding:16px;border-bottom:1px solid rgb(var(--line))"><input id="nq" class="field" placeholder="Nome da fila, por exemplo Dicas da semana" aria-label="Nome da nova fila"><button class="btn" id="cq">Criar fila</button></div>
+        ${qd.queues.length ? `<ul class="list">${qd.queues.map((x) => `<li><button class="item" data-q="${esc(x.id)}" style="justify-content:space-between"><strong style="font-weight:500">${esc(x.name)}</strong><span class="small muted tnum">${x.remaining} na espera, ${x.total} no total</span></button></li>`).join("")}</ul>` : emptyBox("Nenhuma fila", "Crie uma fila e adicione conteúdos em Agendar, escolhendo \"Adicionar a uma fila de conteúdo\".")}</section>
+      <section class="panel"><header><h2>Regras</h2><button class="btn primary sm" id="nr" ${qd.queues.length ? "" : "disabled"}>Nova regra</button></header>
+        ${rd.rules.length ? `<ul class="list">${rd.rules.map((r) => `<li style="padding:16px 20px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><div class="row" style="gap:8px"><strong>${esc(r.name)}</strong><span class="badge t-${r.active ? "ok" : "idle"}"><span class="dot d-${r.active ? "ok" : "idle"}"></span>${r.active ? "Ativa" : "Pausada"}</span></div><div class="row" style="gap:4px"><button class="btn ghost sm" data-rt="${esc(r.id)}">${r.active ? "Pausar" : "Ativar"}</button><button class="btn ghost sm" data-re="${esc(r.id)}">Editar</button><button class="btn ghost sm bad" data-rd="${esc(r.id)}">Excluir</button></div></div>
+          <p class="small muted" style="margin:4px 0 0">${DAYS.filter(([d]) => r.daysOfWeek.includes(d)).map(([, l]) => l).join(", ")} às <span class="tnum">${esc(r.times.join(", "))}</span>, da fila ${esc(qd.queues.find((x) => x.id === r.queueId)?.name || "?")}, em ${r.accountIds.map((a) => "@" + esc(un(a))).join(", ")}.${r.recycle ? " Recomeça a fila quando acabar." : ""}</p></li>`).join("")}</ul>` : emptyBox("Nenhuma regra", "Uma regra diz: publicar da fila X, nas contas Y, nestes dias e horários.")}</section></div>`;
+    $("#cq").onclick = async () => { const n = $("#nq").value.trim(); if (!n) return; await api("/queues", { method: "POST", body: { name: n } }); load(); };
+    $("#nq").onkeydown = (e) => e.key === "Enter" && $("#cq").click();
+    $$("[data-q]", el).forEach((b) => b.onclick = () => queueDrawer(b.dataset.q, load));
+    $("#nr").onclick = () => ruleDrawer({ daysOfWeek: [1, 2, 3, 4, 5], times: ["09:00"], timezone: "America/Sao_Paulo", horizonDays: 7, recycle: false, active: true, accountIds: [] }, qd.queues, ad.accounts, load);
+    $$("[data-re]", el).forEach((b) => b.onclick = () => ruleDrawer(rd.rules.find((r) => r.id === b.dataset.re), qd.queues, ad.accounts, load));
+    $$("[data-rt]", el).forEach((b) => b.onclick = async () => { const r = rd.rules.find((x) => x.id === b.dataset.rt); await api(`/rules/${r.id}`, { method: "PATCH", body: { active: !r.active } }); load(); });
+    $$("[data-rd]", el).forEach((b) => b.onclick = async () => { const r = rd.rules.find((x) => x.id === b.dataset.rd); if (!confirm(`Excluir a regra "${r.name}"? Os horários futuros criados por ela serão cancelados.`)) return; await api(`/rules/${r.id}`, { method: "DELETE" }); load(); });
+  };
+  await load();
+};
+function queueDrawer(id, onChange) {
+  const render = async (body) => {
+    const d = await api(`/queues/${id}`);
+    $("#drawer-root h2").textContent = d.queue.name;
+    body.innerHTML = `<div class="row" style="gap:8px;margin-bottom:16px"><a class="btn sm primary" href="#/compose">Adicionar conteúdo</a><button class="btn sm danger" id="dq">Excluir fila</button></div>
+      ${d.items.length ? `<ol style="display:grid;gap:8px">${d.items.map((it, i) => `<li class="row panel" style="padding:8px;${it.consumedAt ? "opacity:.5" : ""}"><span class="tnum small muted" style="width:24px;text-align:center">${i + 1}</span>${thumb(it.thumb, 40)}<div style="flex:1;min-width:0"><div class="small" style="font-weight:500">${TYPE[it.type]}${it.consumedAt ? `<span class="muted" style="font-weight:400">, já usado</span>` : ""}</div><div class="small muted trunc">${esc(it.caption || "Sem legenda")}</div></div><button class="btn ghost sm" data-mv="${i}:-1" aria-label="Subir">↑</button><button class="btn ghost sm" data-mv="${i}:1" aria-label="Descer">↓</button><button class="btn ghost sm" data-rp="${esc(it.postId)}">Remover</button></li>`).join("")}</ol>` : `<p class="small muted">Fila vazia.</p>`}`;
+    $$("[data-mv]", body).forEach((b) => b.onclick = async () => { const [i, dd] = b.dataset.mv.split(":").map(Number), j = i + dd, order = d.items.map((x) => x.postId); if (j < 0 || j >= order.length) return; [order[i], order[j]] = [order[j], order[i]]; await api(`/queues/${id}`, { method: "PATCH", body: { order } }); render(body); });
+    $$("[data-rp]", body).forEach((b) => b.onclick = async () => { await api(`/posts/${b.dataset.rp}`, { method: "DELETE" }); render(body); onChange(); });
+    $("#dq", body).onclick = async () => { if (!confirm("Excluir esta fila? As regras ligadas a ela também serão excluídas.")) return; await api(`/queues/${id}`, { method: "DELETE" }); closeDrawer(); onChange(); };
+  };
+  openDrawer("Fila", `<p class="muted">Carregando…</p>`, (body) => render(body).catch((e) => body.innerHTML = notice("bad", esc(e.message))));
+}
+function ruleDrawer(rule, queues, accounts, onSaved) {
+  const r = JSON.parse(JSON.stringify(rule));
+  const render = (body) => {
+    body.innerHTML = `<div class="stack">
+      <div><label class="lb" for="rn">Nome</label><input id="rn" class="field" value="${esc(r.name || "")}" placeholder="Dicas de manhã"></div>
+      <div><label class="lb" for="rq">Fila</label><select id="rq" class="field"><option value="">Escolha</option>${queues.map((x) => `<option value="${esc(x.id)}" ${r.queueId === x.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+      <fieldset style="border:0;padding:0;margin:0"><legend class="lb">Contas</legend><div class="row" style="flex-wrap:wrap;gap:8px">${accounts.map((a) => `<button type="button" class="opt ${r.accountIds.includes(a.id) ? "on" : ""}" style="border-radius:999px;padding:4px 12px" data-ra="${esc(a.id)}" aria-pressed="${r.accountIds.includes(a.id)}">@${esc(a.username)}</button>`).join("")}</div></fieldset>
+      <fieldset style="border:0;padding:0;margin:0"><legend class="lb">Dias</legend><div class="row" style="flex-wrap:wrap;gap:6px">${DAYS.map(([d, l]) => `<button type="button" class="opt ${r.daysOfWeek.includes(d) ? "on" : ""}" style="width:48px;padding:6px 0" data-rd="${d}" aria-pressed="${r.daysOfWeek.includes(d)}">${l}</button>`).join("")}</div></fieldset>
+      <div><label class="lb" for="rt">Horários</label><input id="rt" class="field tnum" value="${esc(r.times.join(", "))}" placeholder="09:00, 18:30"></div>
+      <div class="row" style="gap:12px;align-items:flex-start"><div style="flex:1"><label class="lb" for="rz">Fuso</label><input id="rz" class="field" value="${esc(r.timezone)}"></div><div style="flex:1"><label class="lb" for="rh">Planejar com antecedência</label><select id="rh" class="field">${[3, 7, 14, 30].map((n) => `<option value="${n}" ${r.horizonDays === n ? "selected" : ""}>${n} dias</option>`).join("")}</select></div></div>
+      <label class="row small" style="gap:8px;align-items:flex-start"><input type="checkbox" id="rr" ${r.recycle ? "checked" : ""} style="margin-top:4px"><span>Recomeçar a fila quando acabar<span class="muted" style="display:block">Para conteúdo que pode ser republicado. Sem isso, a regra para e avisa no painel quando a fila esvazia.</span></span></label>
+      <div id="rmsg"></div><button class="btn primary" id="rs">Salvar regra</button></div>`;
+    const keep = () => { r.name = $("#rn", body).value; r.queueId = $("#rq", body).value; r.times = $("#rt", body).value.split(/[,\s]+/).filter(Boolean); r.timezone = $("#rz", body).value; r.horizonDays = +$("#rh", body).value; r.recycle = $("#rr", body).checked; };
+    $$("[data-ra]", body).forEach((b) => b.onclick = () => { keep(); const id = b.dataset.ra; r.accountIds = r.accountIds.includes(id) ? r.accountIds.filter((x) => x !== id) : [...r.accountIds, id]; render(body); });
+    $$("[data-rd]", body).forEach((b) => b.onclick = () => { keep(); const d = +b.dataset.rd; r.daysOfWeek = r.daysOfWeek.includes(d) ? r.daysOfWeek.filter((x) => x !== d) : [...r.daysOfWeek, d]; render(body); });
+    $("#rs", body).onclick = async (e) => {
+      keep(); busy(e.target, true);
+      const b = { name: r.name, queueId: r.queueId, accountIds: r.accountIds, daysOfWeek: r.daysOfWeek, times: r.times, timezone: r.timezone, recycle: r.recycle, horizonDays: r.horizonDays, active: r.active };
+      try { await api(r.id ? `/rules/${r.id}` : "/rules", { method: r.id ? "PATCH" : "POST", body: b }); closeDrawer(); onSaved(); }
+      catch (x) { $("#rmsg", body).innerHTML = notice("bad", esc(x.message)); busy(e.target, false); }
+    };
+  };
+  openDrawer(r.id ? "Editar regra" : "Nova regra", "", render);
+}
+
+
+/* ===================== Proxy ===================== */
+PAGES["/proxy"] = async (el) => {
+  const load = async () => {
+    const d = await api("/accounts");
+    const withProxy = d.accounts.filter((a) => a.proxy).length;
+    el.innerHTML = head("Proxy", "Proxy de saída por conta: as chamadas daquela conta à API oficial da Meta passam por esse endereço de rede.")
+      + `<div style="margin-bottom:20px">${notice("", `Use para infraestrutura legítima, como sair por um IP fixo liberado no firewall da empresa ou por uma rede corporativa. O proxy <strong>não</strong> muda limites, regras nem a forma como a Meta identifica a conta: a autorização é pelo token oficial. O endereço fica guardado criptografado e só o servidor e o host aparecem aqui.`)}</div>`
+      + `<div id="pmsg2" style="margin-bottom:16px"></div>`
+      + `<section class="panel"><header><h2>Contas</h2><span class="small muted tnum">${withProxy} de ${d.accounts.length} com proxy</span></header>`
+      + (d.accounts.length ? `<ul class="list">${d.accounts.map((a) => `<li style="padding:16px 20px">
+          <div class="row" style="flex-wrap:wrap;gap:12px">
+            ${avatar(a.profilePictureUrl, a.username, 36)}
+            <div style="flex:1;min-width:180px"><strong>@${esc(a.username)}</strong>
+              <div class="small ${a.proxy ? "" : "muted"} tnum">${a.proxy ? `Proxy: ${esc(a.proxy)}` : "Conexão direta, sem proxy"}</div></div>
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn sm" data-ptest="${esc(a.id)}">Testar conexão</button>
+              ${a.proxy ? `<button class="btn sm ghost bad" data-prm="${esc(a.id)}">Remover proxy</button>` : ""}
+            </div>
+          </div>
+          <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">
+            <input class="field" style="flex:1;min-width:240px" data-pin="${esc(a.id)}" autocomplete="off" spellcheck="false" placeholder="${a.proxy ? "Novo endereço para substituir" : "http://usuario:senha@host:porta ou socks5://host:porta"}" aria-label="Proxy de @${esc(a.username)}">
+            <button class="btn sm primary" data-psave="${esc(a.id)}">${a.proxy ? "Trocar" : "Salvar"}</button>
+          </div>
+          <div class="small" data-pres="${esc(a.id)}" style="margin-top:8px"></div>
+        </li>`).join("")}</ul>` : emptyBox("Nenhuma conta conectada", "Conecte uma conta em Contas para configurar o proxy dela.", `<a class="btn sm" href="#/accounts">Ir para Contas</a>`))
+      + `</section>`;
+    const res = (id, tone, text) => { const x = $(`[data-pres="${id}"]`, el); x.innerHTML = notice(tone, esc(text)); };
+    $$("[data-psave]", el).forEach((b) => b.onclick = async () => {
+      const id = b.dataset.psave, v = $(`[data-pin="${id}"]`, el).value.trim();
+      if (!v) return res(id, "bad", "Digite o endereço do proxy.");
+      busy(b, true);
+      try { await api(`/accounts/${id}`, { method: "PATCH", body: { proxyUrl: v } }); await load(); res(id, "ok", "Proxy salvo. Clique em Testar conexão para confirmar que a Meta responde por ele."); }
+      catch (e) { res(id, "bad", e.message); busy(b, false); }
+    });
+    $$("[data-prm]", el).forEach((b) => b.onclick = async () => {
+      busy(b, true);
+      try { await api(`/accounts/${b.dataset.prm}`, { method: "PATCH", body: { proxyUrl: null } }); await load(); res(b.dataset.prm, "ok", "Proxy removido. A conta volta a usar conexão direta."); }
+      catch (e) { res(b.dataset.prm, "bad", e.message); busy(b, false); }
+    });
+    $$("[data-ptest]", el).forEach((b) => b.onclick = async () => {
+      const id = b.dataset.ptest; busy(b, true);
+      const r = await api(`/accounts/${id}/check`, { method: "POST" }).catch((e) => ({ ok: false, error: e.message }));
+      busy(b, false);
+      r.ok ? res(id, "ok", `A Meta respondeu${d.accounts.find((a) => a.id === id)?.proxy ? " pelo proxy" : ""}. Cota da API: ${r.quota.used} de ${r.quota.total} publicações nas últimas 24h.`)
+           : res(id, "bad", `Falhou: ${r.error}. Se o proxy estiver configurado, remova-o para voltar à conexão direta; com proxy quebrado as publicações dessa conta também falham.`);
+    });
+  };
+  await load();
+};
+
+/* ===================== Minha conta ===================== */
+PAGES["/settings"] = async (el) => {
+  el.innerHTML = head("Minha conta") + `<section class="panel" style="max-width:520px"><header><h2>Alterar senha</h2></header><form class="pad stack" id="pwf"><div><label class="lb" for="np">Nova senha</label><input id="np" type="password" class="field" minlength="10" required autocomplete="new-password"></div><div id="pmsg"></div><button class="btn primary">Salvar senha</button></form></section>`;
+  $("#pwf").onsubmit = async (e) => { e.preventDefault(); const b = $("#pwf button"); busy(b, true); const { error } = await sb.auth.updateUser({ password: $("#np").value }); $("#pmsg").innerHTML = error ? notice("bad", esc(error.message)) : notice("ok", "Senha atualizada."); busy(b, false); };
+};
+
+/* ===================== Início ===================== */
+(async () => {
+  // Volta de link de e-mail (PKCE): o supabase-js troca o ?code= pela sessão; limpamos a URL depois
+  if (new URLSearchParams(location.search).has("code")) {
+    await sb.auth.getSession();
+    history.replaceState(null, "", location.pathname + (location.hash || "#/dashboard"));
+  }
+  route();
+})();
+</script>
+</body>
+</html>
