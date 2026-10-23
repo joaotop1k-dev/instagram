@@ -14,6 +14,7 @@
         ".se-help{font-size:12px;color:rgb(var(--muted));line-height:1.5;margin:6px 0 0}",
         ".se-stage{position:relative;aspect-ratio:9/16;width:min(100%,330px);margin:auto;overflow:hidden;border-radius:18px;border:1px solid rgb(var(--line));background:linear-gradient(155deg,#202436,#09090f 68%);touch-action:none}",
         ".se-stage>img,.se-stage>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}",
+        ".se-stage [hidden]{display:none!important}",
         ".se-placeholder{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:#b3b4c3;font-size:14px}",
         ".se-shade{position:absolute;inset:0;background:linear-gradient(transparent 65%,rgba(0,0,0,.36));pointer-events:none}",
         ".se-overlay{position:absolute;transform:translate(-50%,-50%);max-width:90%;min-width:40%;text-align:center;white-space:normal;word-break:break-word;border-radius:13px;padding:11px 16px;background:rgba(12,13,22,.86);border:1px solid rgba(255,255,255,.25);box-shadow:0 5px 18px rgba(0,0,0,.35);font-weight:800;line-height:1.2;user-select:none;touch-action:none;cursor:grab}",
@@ -30,15 +31,13 @@
       document.head.appendChild(style);
     }
 
-    let accounts = [];
+    let accounts = [], accountError = "";
     try {
       const response = await api("/accounts");
       accounts = (response.accounts || []).filter(function (a) { return a.status === "active"; });
     } catch (error) {
-      root.innerHTML = head("Story com link", "Monte sua arte para o Instagram") +
-        '<section class="panel pad"><p class="small">Não consegui consultar as contas: ' + esc(error.message) +
-        '</p><p class="hint">O bloqueio temporário de cota do Supabase pode impedir o acesso. O editor será liberado quando a API voltar a responder.</p></section>';
-      return;
+      accountError = error.message || "Supabase indisponível";
+      // O editor e o download local continuam funcionando durante uma restrição de cota.
     }
     const S = { file: null, kind: "", url: "", fileName: "", link: "", text: "Clique Aqui 👆", color: "#ffffff",
       size: 115, x: 0.5, y: 0.74, profile: "", draw: true, busy: false };
@@ -259,5 +258,6 @@
       window.removeEventListener("hashchange", cleanup);
     });
     update();
+    if (accountError) message("Editor local disponível. Publicação automática indisponível: " + accountError, "bad");
   };
 })();
