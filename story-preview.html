@@ -17,12 +17,13 @@
 h1{font-size:27px;letter-spacing:-.04em;margin:0 0 7px}h2{font-size:18px}.lead{color:rgb(var(--muted));font-size:14px;line-height:1.5;margin:0 0 24px}
 footer{margin:40px auto 10px;max-width:1100px;color:rgb(var(--muted));font-size:12px;text-align:center;padding:20px}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="/story-editor.js" defer></script>
 </head>
 <body>
 <header class="top"><a class="brand" href="/">Insta<span>flow</span></a><a class="btn ghost" href="/">Entrar no painel</a></header>
 <main id="offline-story" class="wrap"><p class="lead">Carregando editor...</p></main>
-<footer>Editor local: sua foto ou vídeo fica no navegador até você decidir baixar. O Instagram exige que o sticker de link seja adicionado no aplicativo.</footer>
+<footer>O editor funciona sem login para criar arquivos. Para selecionar uma conta e publicar um Story simples, faça login neste domínio. Stickers clicáveis devem ser adicionados no Instagram.</footer>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   if (!window.InstaStoryEditor) {
@@ -34,8 +35,64 @@ document.addEventListener("DOMContentLoaded", function () {
       return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
   }
+  const db = window.supabase.createClient("https://hvicjhsvqzlqekmfsndw.supabase.co", "sb_publishable_i3NdDr0COW24UyKYn3kEwQ_AoLHkiYQ", {
+    auth: { flowType: "pkce", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  // O mesmo login do painel principal funciona aqui. Contas nunca são expostas para visitantes.
+  async function callApi(path, options) {
+    const opts = options || {};
+    const sessionResponse = await db.auth.getSession();
+    const session = sessionResponse.data && sessionResponse.data.session;
+    if (!session) throw Error("Você precisa entrar no painel antes de escolher uma conta. O editor local continua funcionando.");
+    let workspaceId = "";
+    try { workspaceId = localStorage.getItem("instaflow.ws") || ""; } catch (_) {}
+    const res = await fetch("https://hvicjhsvqzlqekmfsndw.supabase.co/functions/v1/instaflow-api" + path, {
+      method: opts.method || "GET",
+      headers: {
+        Authorization: "Bearer " + session.access_token,
+        "Content-Type": "application/json",
+        ...(workspaceId ? { "X-Workspace-Id": workspaceId } : {})
+      },
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+    });
+    const response = await res.json().catch(function () { return {}; });
+    if (res.status === 402) throw Error("Supabase bloqueado por limite de egress. A seleção e a publicação serão liberadas quando a cota for renovada.");
+    if (res.status === 401) throw Error("Seu login expirou. Entre novamente no painel do Instaflow.");
+    if (!res.ok) throw Error(response.error || "Falha na API (" + res.status + ")");
+    return response;
+  }
+  function sendFile(url, file, onProgress) {
+    return new Promise(function (resolve, reject) {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.upload.onprogress = function (ev) {
+        if (ev.lengthComputable && onProgress) onProgress(Math.round(ev.loaded / ev.total * 99));
+      };
+      xhr.onload = function () {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(Error("Falha ao enviar a mídia: HTTP " + xhr.status));
+      };
+      xhr.onerror = function () { reject(Error("Falha de rede no envio da mídia.")); };
+      xhr.send(file);
+    });
+  }
+  async function awaitVideoReady(mediaId, initial) {
+    if (!initial || initial.status !== "pending") return initial;
+    const start = Date.now();
+    let delay = 2000;
+    while (Date.now() - start < 180000) {
+      await new Promise(function (resolve) { setTimeout(resolve, delay); });
+      const result = await callApi("/media/" + encodeURIComponent(mediaId) + "/status");
+      if (result.status !== "pending") return result;
+      delay = Math.min(delay + 2000, 8000);
+    }
+    throw Error("O processamento demorou demais. Confira o status no painel.");
+  }
   window.InstaStoryEditor(document.getElementById("offline-story"), {
-    api: async function () { return {accounts:[]}; },
+    api: callApi,
+    videoPublishEnabled: false,
     esc: escapeHtml,
     head: function (title, intro) { return "<h1>" + escapeHtml(title) + "</h1><p class='lead'>" + escapeHtml(intro) + "</p>"; },
     prepareImage: async function (file) {
@@ -57,8 +114,8 @@ document.addEventListener("DOMContentLoaded", function () {
       return {file:new File([blob],"foto-story.jpg",{type:"image/jpeg"})};
     },
     prepareVideo: async function (file) { return {file:file}; },
-    putFile: async function () { throw Error("Publicação disponível apenas no painel autenticado."); },
-    awaitReady: async function () { throw Error("Publicação disponível apenas no painel autenticado."); }
+    putFile: sendFile,
+    awaitReady: awaitVideoReady
   }).catch(function (e) {
     document.getElementById("offline-story").textContent = "Erro no editor: " + e.message;
   });
