@@ -45,8 +45,8 @@
     root.innerHTML = head("Story com link", "Crie uma imagem de Story com botão e prepare o link para adicionar no aplicativo") +
       '<div class="se-shell"><section class="se-card se-stack">' +
       '<div><label class="se-label" for="se-account">Publicando em</label><select class="field se-input" id="se-account">' +
-      (accounts.length ? accounts.map(function (a) { return '<option value="' + esc(a.id) + '">@' + esc(a.username) + '</option>'; }).join("") : '<option value="">Conecte uma conta ativa</option>') +
-      '</select></div>' +
+      (accounts.length ? accounts.map(function (a) { return '<option value="' + esc(a.id) + '">@' + esc(a.username) + '</option>'; }).join("") : '<option value="">Faça login para carregar as contas</option>') +
+      '</select><div class="row" style="align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap"><span class="se-help" id="se-account-help" style="margin:0">' + (accounts.length ? "Escolha a conta que vai receber o Story." : "Você pode editar sem login. Para publicar, entre no painel.") + '</span><button type="button" class="btn ghost sm" id="se-refresh" style="min-height:32px">Atualizar contas</button></div><a href="/#/login" id="se-login" class="se-help" style="display:' + (accounts.length ? 'none' : 'inline-block') + '">Entrar no painel para conectar as contas</a></div>' +
       '<div><span class="se-label">Foto ou vídeo</span><label class="se-file" id="se-drop" for="se-file"><strong id="se-file-name">Arraste a foto ou vídeo</strong><span class="se-help">ou clique para escolher (até 50 MB)</span><input id="se-file" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,video/mp4,video/quicktime" class="sr"></label></div>' +
       '<div><label class="se-label" for="se-link">Link</label><input id="se-link" type="url" class="field se-input" placeholder="https://seusite.com.br" maxlength="2048" autocomplete="url"><p class="se-help">O link clicável precisa ser colocado com o sticker Link dentro do Instagram.</p></div>' +
       '<div><span class="se-label">Cor do texto</span><div id="se-colors" class="row" style="gap:12px;flex-wrap:wrap">' +
@@ -91,10 +91,12 @@
       el("se-size-label").textContent = S.size + "%";
       el("se-x").value = Math.round(S.x * 100); el("se-y").value = Math.round(S.y * 100);
       root.querySelectorAll("[data-color]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.color === S.color)); });
-      el("se-publish").disabled = !S.file || !!S.link.trim() || !accounts.length || S.busy || (S.kind === "video" && S.draw);
+      el("se-publish").disabled = !S.file || !!S.link.trim() || !el("se-account").value || S.busy || (S.kind === "video" && (S.draw || deps.videoPublishEnabled === false));
       el("se-download").disabled = !S.file || !validLink() || S.busy;
       el("se-copy").disabled = !S.link.trim() || !validLink();
-      el("se-warning").textContent = S.kind === "video" && S.draw
+      el("se-warning").textContent = S.kind === "video" && deps.videoPublishEnabled === false && !S.link.trim()
+        ? "A edição e o download de vídeos funcionam aqui. Para publicar um vídeo com privacidade, abra o editor dentro do painel autenticado."
+        : S.kind === "video" && S.draw
         ? "Vídeos: a prévia mostra o botão, mas ele não pode ser incorporado ao vídeo neste editor. Para um link clicável, baixe o vídeo e adicione o sticker Link e o texto diretamente no Instagram."
         : S.link.trim()
           ? "Link informado: prepare o arquivo e adicione o sticker Link no aplicativo do Instagram. A API oficial não publica stickers clicáveis."
@@ -197,8 +199,10 @@
     async function publish() {
       if (!S.file || S.busy) return;
       if (S.link.trim()) return message("Para garantir um link clicável, baixe o Story e adicione o sticker Link pelo Instagram. A API não suporta stickers.", "bad");
-      if (!el("se-account").value) return message("Selecione uma conta ativa.", "bad");
-      if (!confirm("Publicar Story sem sticker clicável pela API oficial? A publicação será enviada à fila imediatamente.")) return;
+      const chosen = accounts.find(function (a) { return a.id === el("se-account").value; });
+      if (!chosen) return message("Selecione uma conta conectada. Clique em Atualizar contas, se necessário.", "bad");
+      if (S.kind === "video" && deps.videoPublishEnabled === false) return message("Para publicar vídeos, abra o editor dentro do painel do Instaflow.", "bad");
+      if (!confirm("Publicar este Story sem sticker clicável em @" + chosen.username + "? A publicação será enviada à fila imediatamente.")) return;
       S.busy = true; update(); message("Preparando e enviando arquivo...");
       try {
         const output = await getPreparedFile();
@@ -218,6 +222,32 @@
       } catch (error) { message("Não foi possível enviar: " + error.message, "bad"); }
       finally { S.busy = false; update(); }
     }
+    async function refreshAccounts() {
+      const selection = el("se-account"), previous = selection.value, button = el("se-refresh");
+      button.disabled = true;
+      el("se-account-help").textContent = "Consultando contas do Instagram...";
+      try {
+        const response = await api("/accounts");
+        accounts = (response.accounts || []).filter(function (a) { return a.status === "active"; });
+        accountError = "";
+        selection.innerHTML = accounts.length ? accounts.map(function (a) {
+          return '<option value="' + esc(a.id) + '">@' + esc(a.username) + '</option>';
+        }).join("") : '<option value="">Nenhuma conta ativa conectada</option>';
+        if (accounts.some(function (a) { return a.id === previous; })) selection.value = previous;
+        el("se-login").style.display = accounts.length ? "none" : "inline-block";
+        el("se-account-help").textContent = accounts.length
+          ? accounts.length + " conta(s) disponível(is). Escolha onde publicar."
+          : "Não encontramos contas ativas. Conecte uma no painel.";
+        message(accounts.length ? "Contas atualizadas. Selecione o perfil desejado." : "Nenhuma conta ativa vinculada ao seu workspace.", accounts.length ? "ok" : "bad");
+      } catch (error) {
+        accountError = error.message || "Falha ao consultar contas";
+        el("se-account-help").textContent = "Contas temporariamente indisponíveis.";
+        el("se-login").style.display = "inline-block";
+        message("Não consegui buscar as contas: " + accountError, "bad");
+      } finally { button.disabled = false; update(); }
+    }
+    el("se-refresh").addEventListener("click", refreshAccounts);
+    el("se-account").addEventListener("change", function () { update(); });
     el("se-file").addEventListener("change", function (e) { chooseFile(e.target.files[0]); });
     const drop = el("se-drop");
     ["dragenter", "dragover"].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add("dragover"); }); });
