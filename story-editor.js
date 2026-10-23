@@ -232,6 +232,10 @@
     el("se-y").addEventListener("input", function (e) { S.y = +e.target.value / 100; update(); });
     root.querySelectorAll("[data-color]").forEach(function (b) { b.addEventListener("click", function () { S.color = b.dataset.color; update(); }); });
     const stage = el("se-stage"), button = el("se-overlay");
+    // Aceita arquivos também ao arrastar diretamente sobre a prévia vertical.
+    ["dragenter", "dragover"].forEach(function (type) { stage.addEventListener(type, function (e) { e.preventDefault(); stage.style.outline = "2px dashed #60a5fa"; }); });
+    ["dragleave", "drop"].forEach(function (type) { stage.addEventListener(type, function (e) { e.preventDefault(); stage.style.outline = ""; }); });
+    stage.addEventListener("drop", function (e) { chooseFile(e.dataTransfer.files[0]); });
     let dragging = false;
     button.addEventListener("pointerdown", function (e) { if (!S.draw) return; dragging = true; button.setPointerCapture(e.pointerId); e.preventDefault(); });
     button.addEventListener("pointermove", function (e) {
