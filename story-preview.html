@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Editor de Story com link — Instaflow</title>
+<style>
+:root{--surface:25 25 35;--line:60 61 76;--muted:171 174 194;--accent:38 117 246;--bad:255 94 99;--ok:42 202 133;--ink:239 241 248;--canvas:14 14 22}
+*{box-sizing:border-box}body{background:rgb(var(--canvas));color:rgb(var(--ink));font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;margin:0}
+.top{border-bottom:1px solid rgb(var(--line));padding:16px clamp(16px,5vw,48px);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-size:20px;font-weight:750;color:#fff;text-decoration:none}.brand span{color:#60a5fa}.wrap{margin:auto;max-width:1100px;padding:24px}
+.btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;min-height:42px;text-decoration:none;border-radius:9px;padding:8px 15px;background:rgb(40 42 55);border:1px solid rgb(var(--line));color:rgb(var(--ink));font-weight:650;font-size:13px}
+.btn.primary{background:#2563eb;border-color:#2563eb;color:#fff}.btn.ghost{background:transparent}.btn:disabled{opacity:.38;cursor:not-allowed}
+.field{width:100%;padding:10px;border:1px solid rgb(var(--line));border-radius:9px;background:#1b1c29;color:#fff;min-width:0}
+.row{display:flex;gap:8px}.small{font-size:13px}.xs{font-size:11px}.muted{color:rgb(var(--muted))}.sr{position:absolute;width:1px;height:1px;clip-path:inset(50%);overflow:hidden}
+h1{font-size:27px;letter-spacing:-.04em;margin:0 0 7px}h2{font-size:18px}.lead{color:rgb(var(--muted));font-size:14px;line-height:1.5;margin:0 0 24px}
+footer{margin:40px auto 10px;max-width:1100px;color:rgb(var(--muted));font-size:12px;text-align:center;padding:20px}
+</style>
+<script src="/story-editor.js" defer></script>
+</head>
+<body>
+<header class="top"><a class="brand" href="/">Insta<span>flow</span></a><a class="btn ghost" href="/">Entrar no painel</a></header>
+<main id="offline-story" class="wrap"><p class="lead">Carregando editor...</p></main>
+<footer>Editor local: sua foto ou vídeo fica no navegador até você decidir baixar. O Instagram exige que o sticker de link seja adicionado no aplicativo.</footer>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  if (!window.InstaStoryEditor) {
+    document.getElementById("offline-story").textContent = "Não foi possível carregar o editor. Atualize a página.";
+    return;
+  }
+  function escapeHtml(s) {
+    return String(s || "").replace(/[&<>"']/g, function (c) {
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  window.InstaStoryEditor(document.getElementById("offline-story"), {
+    api: async function () { return {accounts:[]}; },
+    esc: escapeHtml,
+    head: function (title, intro) { return "<h1>" + escapeHtml(title) + "</h1><p class='lead'>" + escapeHtml(intro) + "</p>"; },
+    prepareImage: async function (file) {
+      if (file.type === "image/jpeg" && file.size <= 8 * 1024 * 1024) return {file:file};
+      let bmp;
+      try { bmp = await createImageBitmap(file); }
+      catch (_) { throw Error("O navegador não consegue abrir esse formato. Exporte a imagem como JPEG ou PNG."); }
+      const cv = document.createElement("canvas");
+      const scale = Math.min(1, 1920 / Math.max(bmp.width, bmp.height));
+      cv.width = Math.round(bmp.width * scale); cv.height = Math.round(bmp.height * scale);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(bmp, 0, 0, cv.width, cv.height); bmp.close();
+      let quality = .92, blob;
+      do {
+        blob = await new Promise(function (res) { cv.toBlob(res,"image/jpeg",quality); }); quality -= .12;
+      } while (blob && blob.size > 8 * 1024 * 1024 && quality > .4);
+      if (!blob || blob.size > 8 * 1024 * 1024) throw Error("Arquivo muito grande para converter.");
+      return {file:new File([blob],"foto-story.jpg",{type:"image/jpeg"})};
+    },
+    prepareVideo: async function (file) { return {file:file}; },
+    putFile: async function () { throw Error("Publicação disponível apenas no painel autenticado."); },
+    awaitReady: async function () { throw Error("Publicação disponível apenas no painel autenticado."); }
+  }).catch(function (e) {
+    document.getElementById("offline-story").textContent = "Erro no editor: " + e.message;
+  });
+});
+</script>
+</body>
+</html>
