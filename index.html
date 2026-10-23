@@ -999,7 +999,7 @@ function openTarget(id, onChanged) {
   };
   openDrawer("Agendamento", `<p class="muted">Carregando…</p>`, (body) => {
     render(body).catch((e) => body.innerHTML = notice("bad", esc(e.message)));
-    window.__drawerTimer = setInterval(() => { const st = $(".badge", body)?.textContent; if (["Publicando", "Na fila"].includes(st)) render(body).catch(() => { }); }, 5000);
+    window.__drawerTimer = setInterval(() => { const st = $(".badge", body)?.textContent; if (["Publicando", "Na fila"].includes(st)) render(body).catch(() => { }); }, 30000);
   });
 }
 
