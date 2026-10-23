@@ -410,6 +410,7 @@ tr.click{cursor:pointer;transition:background .1s}tr.click:hover{background:rgb(
 <body>
 <div id="app"><p class="pad muted">Carregando…</p></div>
 <div id="drawer-root"></div>
+<script src="/story-editor.js"></script>
 <script>
 "use strict";
 /* ===================== Configuração (valores públicos do projeto) ===================== */
@@ -572,6 +573,7 @@ const ICON = {
   drafts: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
   bulk: '<path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/>',
   library: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="9" cy="9" r="2"/><path d="m21 15-4.5-4.5L5 21"/>',
+  story: '<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M9 18h6"/><path d="m11 8 4 4-4 3"/>',
   calendar: '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
   posts: '<path d="M21.5 2.5 10.5 13.5"/><path d="m21.5 2.5-7 19-4-8-8-4z"/>',
   insights: '<path d="M3 3v18h18"/><path d="M8 16v-4M12.5 16V8M17 16v-6"/>',
@@ -599,7 +601,7 @@ const BRAND = (link = true) => link ? `<a class="brand" href="#/dashboard" aria-
 /* "Agendar" fica no botão de destaque acima do menu; o resto agrupado pelo que a pessoa quer fazer */
 const NAV = [
   [null, [["/dashboard", "Painel", "dashboard"]]],
-  ["Publicar", [["/bulk", "Em massa", "bulk"], ["/drafts", "Rascunhos", "drafts"], ["/library", "Biblioteca", "library"]]],
+  ["Publicar", [["/story", "Story com link", "story"], ["/bulk", "Em massa", "bulk"], ["/drafts", "Rascunhos", "drafts"], ["/library", "Biblioteca", "library"]]],
   ["Acompanhar", [["/calendar", "Calendário", "calendar"], ["/posts", "Publicações", "posts"], ["/insights", "Métricas", "insights"]]],
   ["Automatizar", [["/automation", "Automação", "automation"], ["/warmup", "Aquecimento", "warmup"]]],
   ["Configurar", [["/accounts", "Contas", "accounts"], ["/proxy", "Proxy", "proxy"], ["/team", "Equipe", "team"]]],
@@ -1087,7 +1089,7 @@ function accountSettings(a, onSaved) {
 }
 
 /* ===================== Agendar ===================== */
-const NOTE = { image: "Uma imagem JPEG no feed.", video: "Publicado como Reel compartilhado no feed. A API oficial não publica mais vídeo de feed separado.", carousel: "De 2 a 10 itens, imagens e vídeos misturados.", reel: "Um vídeo MP4 ou MOV, de 3 s a 15 min. Proporção 9:16 recomendada.", story: "Uma imagem ou vídeo de até 60 s. A API aceita link externo (sticker de link) em stories." };
+const NOTE = { image: "Uma imagem JPEG no feed.", video: "Publicado como Reel compartilhado no feed. A API oficial não publica mais vídeo de feed separado.", carousel: "De 2 a 10 itens, imagens e vídeos misturados.", reel: "Um vídeo MP4 ou MOV, de 3 s a 15 min. Proporção 9:16 recomendada.", story: "Uma imagem ou vídeo de até 60 s. A API não cria stickers clicáveis: para link, use o editor e finalize no Instagram." };
 const IMG_ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
 const ACCEPT = { image: IMG_ACCEPT, video: "video/mp4,video/quicktime", reel: "video/mp4,video/quicktime", story: IMG_ACCEPT + ",video/mp4,video/quicktime", carousel: IMG_ACCEPT + ",video/mp4,video/quicktime" };
 const MAXI = { image: 1, video: 1, reel: 1, story: 1, carousel: 10 };
@@ -1142,7 +1144,7 @@ PAGES["/compose"] = async (el, q) => {
       ${step(2, "Formato", `<div class="row" style="flex-wrap:wrap;gap:8px" role="radiogroup">${Object.entries(TYPE).map(([k, l]) => `<button class="opt ${S.type === k ? "on" : ""}" role="radio" aria-checked="${S.type === k}" data-type="${k}">${l}</button>`).join("")}</div><p class="hint" style="margin-top:8px">${NOTE[S.type]}</p>`)}
       ${step(3, "Mídia", `<div class="uploads">${S.ups.map((u, i) => `<div class="up"><div class="sq">${u.preview ? (u.kind === "video" ? `<video src="${esc(u.preview)}" muted preload="none" controls></video>` : `<img src="${esc(u.preview)}" alt="">`) : u.error ? `<span class="xs bad" style="padding:8px">${esc(u.error)}</span>` : `<span class="small muted tnum">${u.progress}%</span>`}</div><div class="row xs" style="justify-content:space-between;margin-top:4px"><span class="muted tnum">${S.type === "carousel" ? i + 1 : u.kind === "video" ? "Vídeo" : "Imagem"}</span><span>${S.type === "carousel" ? `<button class="btn ghost sm" style="height:20px;padding:0 4px" data-mv="${i}:-1" aria-label="Mover para a esquerda">‹</button><button class="btn ghost sm" style="height:20px;padding:0 4px" data-mv="${i}:1" aria-label="Mover para a direita">›</button>` : ""}<button class="btn ghost sm" style="height:20px;padding:0 4px" data-rmu="${i}">Remover</button></span></div>${u.note ? `<div class="xs muted" style="margin-top:2px;line-height:1.35">${esc(u.note)}</div>` : ""}</div>`).join("")}
         ${S.ups.length < MAXI[S.type] ? `<label class="drop"><span>Enviar<br>arquivo</span><input type="file" class="sr" id="file" accept="${ACCEPT[S.type]}" ${S.type === "carousel" ? "multiple" : ""}></label>` : ""}</div>${S.type !== "carousel" ? `<p class="small" style="margin:12px 0 0">Quer enviar <strong>vários arquivos de uma vez</strong>? Use <a href="#/bulk" class="accentc" style="text-decoration:underline">Em massa</a>: cada arquivo vira um post nos próximos horários livres. Para um único post com vários itens, escolha <strong>Carrossel</strong> no passo 2.</p>` : ""}${keepBox("ckeep", S.keep)}<p class="hint" style="margin-top:8px">Toda foto e vídeo tem os metadados (localização GPS, aparelho, datas, autoria) removidos no seu navegador antes do envio, sem perder qualidade. Imagens JPEG, PNG ou HEIC (convertidas para JPEG). No feed, imagens fora da proporção aceita (4:5 a 1,91:1) são recortadas no centro. Vídeos MP4 ou MOV até 50 MB no plano gratuito.</p>`)}
-      ${S.type === "story" ? step(4, "Link do story", `<label class="lb" for="slink">URL externa (opcional)</label><input id="slink" type="url" class="field" placeholder="https://seusite.com.br" value="${esc(S.opts.storyLink || "")}"><p class="hint" style="margin-top:6px">Aparece como sticker de link no story. Só funciona em contas profissionais verificadas pela Meta.</p>`) : ""}
+      ${S.type === "story" ? step(4, "Link do story", `<label class="lb" for="slink">URL externa (opcional)</label><input id="slink" type="url" class="field" placeholder="https://seusite.com.br" value="${esc(S.opts.storyLink || "")}"><p class="hint" style="margin-top:6px">Link guardado como referência. A API oficial não publica stickers clicáveis. Para isso, <a class="accentc" href="#/story">abra o editor de Story com link</a> e termine no aplicativo do Instagram.</p>`) : ""}
       ${S.type !== "story" ? step(4, "Legenda", `<div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><select id="tplsel" class="field" style="width:auto;max-width:260px" aria-label="Modelo de legenda"><option value="">Modelos de legenda…</option>${tplOptions(templates, S.sel)}</select><button class="btn sm" id="tplins">Inserir</button><button class="btn sm ghost" id="tplsave">Salvar legenda como modelo</button></div><textarea id="cap" class="field" rows="6" placeholder="Escreva a legenda">${esc(S.caption)}</textarea><div class="row xs muted tnum" style="justify-content:flex-end;gap:16px;margin-top:4px"><span id="tagc" class="${tags > 30 ? "bad" : ""}">${tags}/30 hashtags</span><span id="capc" class="${S.caption.length > 2200 ? "bad" : ""}">${S.caption.length}/2200</span></div>`) : ""}
       ${S.type !== "story" ? advStep() : ""}
       ${step(S.type === "story" ? 4 : 6, "Quando", `<div class="row" style="gap:8px;margin-bottom:16px;flex-wrap:wrap" role="radiogroup">${[["schedule", "Em datas definidas"], ["queue", "Adicionar a uma fila de conteúdo"]].map(([v, l]) => `<button class="opt ${S.dest === v ? "on" : ""}" role="radio" aria-checked="${S.dest === v}" data-dest="${v}">${l}</button>`).join("")}</div>
@@ -1206,7 +1208,7 @@ PAGES["/compose"] = async (el, q) => {
 
   /** Opções extras no formato que a API espera (só o que vale para o formato escolhido). */
   function buildOptions() {
-    if (S.type === "story") return {};
+    if (S.type === "story") return S.opts.storyLink ? { storyLink: S.opts.storyLink } : {};
     const o = {};
     const col = splitUsers(S.opts.collab); if (col.length) o.collaborators = col;
     if (S.type === "image" && S.opts.tags.length) o.userTags = S.opts.tags;
@@ -1370,6 +1372,11 @@ PAGES["/compose"] = async (el, q) => {
     } catch (e) { $("#cmsg", el).innerHTML = notice("bad", esc(e.message)); busy(btn, false); busy($("#submit2", el), false); submitting = false; $("#cmsg", el).scrollIntoView({ block: "nearest" }); }
   }
   render();
+};
+/* Editor de Story 9:16 (mídia visual para sticker adicionado no Instagram). */
+PAGES["/story"] = async (el) => {
+  if (!window.InstaStoryEditor) throw new Error("Editor de Story não carregou. Atualize a página.");
+  await window.InstaStoryEditor(el, { api, esc, head, prepareImage, prepareVideo, putFile, awaitReady });
 };
 /* ---------- Limpeza de metadados (sem perda de qualidade) ---------- */
 const ascii = (u8, from, n) => String.fromCharCode(...u8.subarray(from, from + n));
